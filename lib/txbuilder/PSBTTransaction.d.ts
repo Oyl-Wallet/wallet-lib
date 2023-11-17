@@ -38,6 +38,7 @@ export declare class PSBTTransaction {
      * @param {UnspentOutput} utxo - The unspent transaction output to add as an input.
      */
     addInput(utxo: UnspentOutput, isSegwit?: boolean): void;
+    getNumberOfInputs(): number;
     /**
      * Calculates the total value of all inputs in the transaction.
      * @returns {number} The total input value in satoshis.

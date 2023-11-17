@@ -2,7 +2,7 @@
 *
 *
 The  parent key should be able to be derived sequentially. The UI can select/change
-the path parameters (e.g "44"/"49"/"86")  
+the path parameters (e.g "44"/"49"/"86")
 // */
 import * as bitcoin from 'bitcoinjs-lib'
 import { HdKeyring } from './hdKeyring'

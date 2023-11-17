@@ -1,0 +1,20 @@
+const vB = inputs * 149 + 3 * 32 + 12
+  const minerFee = vB * fastestFee
+
+
+export const getRecommendedBTCFeesMempool = async () => {
+  const gen_res = await axios
+    .get(`${MEMPOOL_SPACE_API_V1_URL}/fees/recommended`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+    .then((res) => res.data)
+
+  return await gen_res
+}
+
+
+
+https://mempool.space/api/v1
+https://mempool.space/api/v1/fees/recommended

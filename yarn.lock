@@ -1657,10 +1657,10 @@ libnpmpack@^5.0.20:
     npm-package-arg "^10.1.0"
     pacote "^15.0.8"
 
-libnpmpublish@^7.5.0:
-  version "7.5.0"
-  resolved "https://registry.yarnpkg.com/libnpmpublish/-/libnpmpublish-7.5.0.tgz#a118c8fdc680947c960648ed8b4c94d15e42e0ab"
-  integrity sha512-zctH6QcTJ093lpxmkufr2zr3AJ9V90hcRilDFNin6n91ODj+S28RdyMFFJpa9NwyztmyV2hlWLyZv0GaOQBDyA==
+libnpmpublish@^7.5.1:
+  version "7.5.1"
+  resolved "https://registry.yarnpkg.com/libnpmpublish/-/libnpmpublish-7.5.1.tgz#80f0b5d30210156af7a1b98b1a7bff06bd868684"
+  integrity sha512-z/7HYMtuRrNgcftrI9ILXezZWHYHG0RaIZFfUvcLktE75vrScE3zOO+qvAbvQodQi4YvYoOGF1ySQ8tdbDCYQQ==
   dependencies:
     ci-info "^3.6.1"
     normalize-package-data "^5.0.0"
@@ -2068,9 +2068,9 @@ npm-user-validate@^2.0.0:
   integrity sha512-sSWeqAYJ2dUPStJB+AEj0DyLRltr/f6YNcvCA7phkB8/RMLMnVsQ41GMwHo/ERZLYNDsyB2wPm7pZo1mqPOl7Q==
 
 npm@^9.6.7:
-  version "9.9.1"
-  resolved "https://registry.yarnpkg.com/npm/-/npm-9.9.1.tgz#55fd293a86a877b6aacfca3021ec4e94fcc0b930"
-  integrity sha512-D3YZ1ZTxPGDHLLiFU9q3sVrPfYnn6BaJ1hogm3vdWi8oOmHGtTlPUPXAM0iG22UT0JRkBnMDOh6oUhpbEYgg2A==
+  version "9.9.2"
+  resolved "https://registry.yarnpkg.com/npm/-/npm-9.9.2.tgz#28133f81643bce36c1c8bcb57b51e1ee53583df7"
+  integrity sha512-D3tV+W0PzJOlwo8YmO6fNzaB1CrMVYd1V+2TURF6lbCbmZKqMsYgeQfPVvqiM3zbNSJPhFEnmlEXIogH2Vq7PQ==
   dependencies:
     "@isaacs/string-locale-compare" "^1.1.0"
     "@npmcli/arborist" "^6.5.0"
@@ -2104,7 +2104,7 @@ npm@^9.6.7:
     libnpmhook "^9.0.3"
     libnpmorg "^5.0.4"
     libnpmpack "^5.0.20"
-    libnpmpublish "^7.5.0"
+    libnpmpublish "^7.5.1"
     libnpmsearch "^6.0.2"
     libnpmteam "^5.0.3"
     libnpmversion "^4.0.2"

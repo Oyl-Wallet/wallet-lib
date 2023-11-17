@@ -1,31 +1,29 @@
 # The default make command.
 DEFAULT = help
-
 # Use 'VERBOSE=1' to echo all commands, for example 'make help VERBOSE=1'.
 ifdef VERBOSE
- Q :=
+  Q :=
 else
- Q := @
+  Q := @
 endif
-
-# Define the 'clean' target.
-.PHONY: clean
-
-# The 'all' target.
+.PHONY: \
+		clean
 all: $(DEFAULT)
-
-# The 'clean' target.
+help:
+	$(Q)echo "make clean             - Deletes binaries and documentation."
 clean:
-   $(Q)rm -rf node_modules apps/**/node_modules apps/**/.next packages/**/node_modules
-   $(Q)echo "--- Deleted UI build artifacts"
+	$(Q)rm -rf lib
+	$(Q)echo "--- Deleted UI build artifacts"
 
-# The 'install' target.
 install:
-   $(Q)yarn install
-   $(Q)echo "--- Dependencies installed"
+	$(Q)yarn
+	$(Q)echo "--- Dependencies installed"
 
-# The 'reset' target.
 reset:
-   $(Q)rm -rf lib
-   $(Q)yarn build
-   $(Q)echo "--- reset"
+	$(Q)rm -rf lib
+	$(Q)yarn build
+	$(Q)echo "--- reset"
+
+retest: reset
+	$(Q)oyl-cli recover
+	$(Q)echo "--- test complete"

@@ -194,7 +194,7 @@ export declare class Wallet {
         segwitPubKey: string;
         inscriptionId: string;
         mnemonic: string;
-    }): Promise<void>;
+    }): Promise<any>;
     /**
      * Creates a Partially Signed Bitcoin Transaction (PSBT) to send regular satoshis, signs and broadcasts it.
      * @param {Object} params - The parameters for creating the PSBT.
