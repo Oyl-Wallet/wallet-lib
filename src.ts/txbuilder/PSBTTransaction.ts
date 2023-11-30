@@ -295,7 +295,7 @@ export class PSBTTransaction {
 
   /**
    * Creates a signed PSBT for the transaction.
-   * @returns {Promise<bitcoin.Psbt>} A promise that resolves to the signed PSBT instance.
+   * @returns {Promise<bitcoin.Psbt>} A promise that resolves to the signed and finalized PSBT instance.
    */
   async createSignedPsbt() {
     const psbt = new bitcoin.Psbt({ network: this.network })

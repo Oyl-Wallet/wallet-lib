@@ -277,7 +277,21 @@ export async function runCLI() {
         to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
         isDry: true,
       })
-      console.log(taprootResponse)
+      console.log({ taprootResponse })
+
+      const segwitResponse = await tapWallet.createPsbtTx({
+        amount: 4000,
+        changeAddress: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
+        feeRate: 62,
+        from: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
+        publicKey:
+          '03ad1e146771ae624b49b463560766f5950a9341964a936ae6bf1627fda8d3b83b',
+        signer: segwitSigner,
+        to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
+        isDry: true,
+      })
+      console.log({ segwitResponse })
+
       return
     case 'test':
       // 'rich baby hotel region tape express recipe amazing chunk flavor oven obtain'

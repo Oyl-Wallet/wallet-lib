@@ -478,8 +478,6 @@ export class Wallet {
         location: satpoint,
       }
 
-      console.log(satpoint)
-
       return {
         id: inscription_id,
         inscription_number,
@@ -735,9 +733,7 @@ export class Wallet {
 
       //@ts-ignore
       psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
-
       const rawtx = psbt.toBase64()
-
       if (isDry) {
         console.log('DRY!!!!')
         return {
@@ -746,8 +742,8 @@ export class Wallet {
         }
       }
 
+      console.log('BROADCASTING!!!!')
       const result = await this.apiClient.pushTx({ transactionHex: rawtx })
-
       return {
         txId: psbt.extractTransaction().getId(),
         ...result,
