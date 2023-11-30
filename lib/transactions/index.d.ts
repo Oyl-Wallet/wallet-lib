@@ -1,4 +1,4 @@
-import { AddressType } from '../shared/interface';
+import { AddressType, IBlockchainInfoUTXO } from '../shared/interface';
 /**
  *
  Returns from https://www.blockchain.com/explorer/api/blockchain_api.
@@ -15,7 +15,7 @@ export declare const getUnspentOutputs: (address: any) => Promise<any>;
 export declare const getBtcPrice: () => Promise<any>;
 export declare const calculateBalance: (utxos: any) => number;
 export declare const convertUsdValue: (amount: any) => Promise<string>;
-export declare const getMetaUtxos: (address: any, utxos: any, inscriptions: any) => Promise<any[]>;
+export declare const getMetaUtxos: (address: string, utxos: IBlockchainInfoUTXO[], inscriptions: any) => Promise<any[]>;
 export declare function getAddressType(address: string): AddressType | null;
 export declare const validateTaprootAddress: ({ address, type }: {
     address: any;

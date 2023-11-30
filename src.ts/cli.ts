@@ -6,11 +6,17 @@ import * as transactions from './transactions'
 import * as bitcoin from 'bitcoinjs-lib'
 import { address as PsbtAddress } from 'bitcoinjs-lib'
 import { ToSignInput } from './shared/interface'
-import { assertHex } from './shared/utils'
+import {
+  assertHex,
+  createSegwitSigner,
+  createTaprootSigner,
+} from './shared/utils'
 import axios from 'axios'
 import * as ecc2 from '@bitcoinerlab/secp256k1'
 import BIP32Factory from 'bip32'
 import { BuildMarketplaceTransaction } from './txbuilder/buildMarketplaceTransaction'
+import { tap } from 'node:test/reporters'
+import * as wasi from 'wasi'
 
 const bip32 = BIP32Factory(ecc2)
 bitcoin.initEccLib(ecc2)
@@ -235,17 +241,47 @@ export async function runCLI() {
   ]
   const [command] = yargs.argv._
   const options = Object.assign({}, yargs.argv)
+  const tapWallet = new Wallet()
+
+  const mnemonic =
+    'rich baby hotel region tape express recipe amazing chunk flavor oven obtain'
+
+  const taprootSigner = await createTaprootSigner({
+    mnemonic: mnemonic,
+    taprootAddress:
+      'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
+  })
+
+  const segwitSigner = await createSegwitSigner({
+    mnemonic: mnemonic,
+    segwitAddress: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
+    segwitPubKey:
+      '03ad1e146771ae624b49b463560766f5950a9341964a936ae6bf1627fda8d3b83b',
+  })
 
   delete options._
   switch (command) {
     case 'load':
       return await loadRpc(options)
       break
+    case 'send':
+      const taprootResponse = await tapWallet.createPsbtTx({
+        amount: 4000,
+        changeAddress:
+          'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
+        feeRate: 62,
+        from: 'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
+        publicKey:
+          '02ebb592b5f1a2450766487d451f3a6fb2a584703ef64c6acb613db62797f943be',
+        signer: taprootSigner,
+        to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
+        isDry: true,
+      })
+      console.log(taprootResponse)
+      return
     case 'test':
-      const mnemonic =
-        'rich baby hotel region tape express recipe amazing chunk flavor oven obtain'
       // 'rich baby hotel region tape express recipe amazing chunk flavor oven obtain'
-      const tapWallet = new Wallet()
+
       return await tapWallet.sendBRC20({
         feeFromAddress:
           'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',

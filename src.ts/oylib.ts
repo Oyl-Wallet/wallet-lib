@@ -478,6 +478,8 @@ export class Wallet {
         location: satpoint,
       }
 
+      console.log(satpoint)
+
       return {
         id: inscription_id,
         inscription_number,
@@ -625,9 +627,10 @@ export class Wallet {
    * @param {string} params.to - The receiving address.
    * @param {string} params.changeAddress - The change address.
    * @param {string} params.amount - The amount to send.
-   * @param {number} params.fee - The transaction fee rate.
+   * @param {number} params.feeRate - The transaction fee rate.
    * @param {any} params.signer - The bound signer method to sign the transaction.
    * @returns {Promise<Object>} A promise that resolves to an object containing transaction ID and other response data from the API client.
+   * @param {boolean} params.isDry - A boolean indicating whether to broadcast the transaction or not.
    */
   async createPsbtTx({
     publicKey,
@@ -635,105 +638,122 @@ export class Wallet {
     to,
     changeAddress,
     amount,
-    fee,
+    feeRate,
     signer,
+    isDry = false,
   }: {
     publicKey: string
     from: string
     to: string
     changeAddress: string
     amount: number
-    fee: number
+    feeRate: number
     signer: any
+    isDry?: boolean
   }) {
-    const utxos = await this.getUtxosArtifacts({ address: from })
-    const feeRate = fee
-    const addressType = transactions.getAddressType(from)
-    if (addressType == null) throw Error('Invalid Address Type')
+    try {
+      const utxos = await this.getUtxosArtifacts({ address: from })
+      const addressType = transactions.getAddressType(from)
+      if (addressType == null) throw Error('Invalid Address Type')
 
-    const tx = new PSBTTransaction(
-      signer,
-      from,
-      publicKey,
-      addressType,
-      feeRate
-    )
-
-    tx.addOutput(to, amount)
-    tx.setChangeAddress(changeAddress)
-    const outputAmount = tx.getTotalOutput()
-
-    const nonOrdUtxos = []
-    const ordUtxos = []
-    utxos.forEach((v) => {
-      if (v.inscriptions.length > 0) {
-        ordUtxos.push(v)
-      } else {
-        nonOrdUtxos.push(v)
-      }
-    })
-
-    let tmpSum = tx.getTotalInput()
-    for (let i = 0; i < nonOrdUtxos.length; i++) {
-      const nonOrdUtxo = nonOrdUtxos[i]
-      if (tmpSum < outputAmount) {
-        tx.addInput(nonOrdUtxo)
-        tmpSum += nonOrdUtxo.satoshis
-        continue
-      }
-
-      const vB = tx.getNumberOfInputs() * 149 + 3 * 32 + 12
-      const fee = vB * feeRate
-
-      if (tmpSum < outputAmount + fee) {
-        tx.addInput(nonOrdUtxo)
-        tmpSum += nonOrdUtxo.satoshis
-      }
-    }
-    if (nonOrdUtxos.length === 0 || tx.getTotalOutput() > tx.getTotalInput()) {
-      throw new Error('Balance not enough')
-    }
-
-    const totalUnspentAmount = tx.getUnspent()
-    if (totalUnspentAmount === 0) {
-      throw new Error('Balance not enough to pay network fee.')
-    }
-
-    // add dummy output
-    tx.addChangeOutput(1)
-    const estimatedNetworkFee = await tx.calNetworkFee()
-    if (totalUnspentAmount < estimatedNetworkFee) {
-      throw new Error(
-        `Not enough balance. Need ${satoshisToAmount(
-          estimatedNetworkFee
-        )} BTC as network fee, but only ${satoshisToAmount(
-          totalUnspentAmount
-        )} BTC is available.`
+      const tx = new PSBTTransaction(
+        signer,
+        from,
+        publicKey,
+        addressType,
+        feeRate
       )
-    }
 
-    const remainingBalance = totalUnspentAmount - estimatedNetworkFee
-    if (remainingBalance >= UTXO_DUST) {
-      // change dummy output to true output
-      tx.getChangeOutput().value = remainingBalance
-    } else {
-      // remove dummy output
-      tx.removeChangeOutput()
-    }
+      tx.addOutput(to, amount)
+      tx.setChangeAddress(changeAddress)
+      const outputAmount = tx.getTotalOutput()
 
-    const psbt = await tx.createSignedPsbt()
-    tx.dumpTx(psbt)
+      const nonOrdUtxos = []
+      const ordUtxos = []
+      utxos.forEach((v) => {
+        // TODO: figure out why we're getting inscribed utxos as un-inscribed
+        if (v.inscriptions.length > 0 || v.satoshis <= 546) {
+          ordUtxos.push(v)
+        } else {
+          nonOrdUtxos.push(v)
+        }
+      })
 
-    //@ts-ignore
-    psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
+      let tmpSum = tx.getTotalInput()
+      for (let i = 0; i < nonOrdUtxos.length; i++) {
+        const nonOrdUtxo = nonOrdUtxos[i]
+        if (tmpSum < outputAmount) {
+          tx.addInput(nonOrdUtxo)
+          tmpSum += nonOrdUtxo.satoshis
+          continue
+        }
 
-    const rawtx = psbt.extractTransaction().toHex()
+        const vB = tx.getNumberOfInputs() * 149 + 3 * 32 + 12
+        const fee = vB * feeRate
 
-    const result = await this.apiClient.pushTx({ transactionHex: rawtx })
+        if (tmpSum < outputAmount + fee) {
+          tx.addInput(nonOrdUtxo)
+          tmpSum += nonOrdUtxo.satoshis
+        }
+      }
+      if (
+        nonOrdUtxos.length === 0 ||
+        tx.getTotalOutput() > tx.getTotalInput()
+      ) {
+        new Error('Balance not enough')
+      }
 
-    return {
-      txId: psbt.extractTransaction().getId(),
-      ...result,
+      const totalUnspentAmount = tx.getUnspent()
+      if (totalUnspentAmount === 0) {
+        new Error('Balance not enough to pay network fee.')
+      }
+
+      // add dummy output
+      tx.addChangeOutput(1)
+      const estimatedNetworkFee = await tx.calNetworkFee()
+      if (totalUnspentAmount < estimatedNetworkFee) {
+        new Error(
+          `Not enough balance. Need ${satoshisToAmount(
+            estimatedNetworkFee
+          )} BTC as network fee, but only ${satoshisToAmount(
+            totalUnspentAmount
+          )} BTC is available.`
+        )
+      }
+
+      const remainingBalance = totalUnspentAmount - estimatedNetworkFee
+      if (remainingBalance >= UTXO_DUST) {
+        // change dummy output to true output
+        tx.getChangeOutput().value = remainingBalance
+      } else {
+        // remove dummy output
+        tx.removeChangeOutput()
+      }
+
+      const psbt = await tx.createSignedPsbt()
+      // await tx.dumpTx(psbt)
+
+      //@ts-ignore
+      psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
+
+      const rawtx = psbt.toBase64()
+
+      if (isDry) {
+        console.log('DRY!!!!')
+        return {
+          txId: psbt.extractTransaction().getId(),
+          rawtx: rawtx,
+        }
+      }
+
+      const result = await this.apiClient.pushTx({ transactionHex: rawtx })
+
+      return {
+        txId: psbt.extractTransaction().getId(),
+        ...result,
+      }
+    } catch (error) {
+      console.error(error)
     }
   }
 
