@@ -275,7 +275,6 @@ export async function runCLI() {
           '02ebb592b5f1a2450766487d451f3a6fb2a584703ef64c6acb613db62797f943be',
         signer: taprootSigner,
         to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
-        isDry: true,
       })
       console.log({ taprootResponse })
 
@@ -288,7 +287,6 @@ export async function runCLI() {
           '03ad1e146771ae624b49b463560766f5950a9341964a936ae6bf1627fda8d3b83b',
         signer: segwitSigner,
         to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
-        isDry: true,
       })
       console.log({ segwitResponse })
 
