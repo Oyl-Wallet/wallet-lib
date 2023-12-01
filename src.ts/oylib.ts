@@ -628,7 +628,6 @@ export class Wallet {
    * @param {number} params.feeRate - The transaction fee rate.
    * @param {any} params.signer - The bound signer method to sign the transaction.
    * @returns {Promise<Object>} A promise that resolves to an object containing transaction ID and other response data from the API client.
-   * @param {boolean} params.isDry - A boolean indicating whether to broadcast the transaction or not.
    */
   async createBtcTx({
     publicKey,
@@ -638,7 +637,6 @@ export class Wallet {
     amount,
     feeRate,
     signer,
-    isDry = false,
   }: {
     publicKey: string
     from: string
