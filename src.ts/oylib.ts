@@ -734,19 +734,20 @@ export class Wallet {
 
       //@ts-ignore
       psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
+      const txId = psbt.extractTransaction().getId()
       const rawtx = psbt.toBase64()
       if (isDry) {
         console.log('DRY!!!!')
         return {
-          txId: psbt.extractTransaction().getId(),
-          rawtx: rawtx,
+          txId,
+          rawtx,
         }
       }
 
       console.log('BROADCASTING!!!!')
-      const result = await this.apiClient.pushTx({ transactionHex: rawtx })
+      const result = await this.apiClient.pushTx({ transactionHex: txId })
       return {
-        txId: psbt.extractTransaction().getId(),
+        txId,
         ...result,
       }
     } catch (error) {
