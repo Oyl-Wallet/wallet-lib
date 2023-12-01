@@ -265,7 +265,7 @@ export async function runCLI() {
       return await loadRpc(options)
       break
     case 'send':
-      const taprootResponse = await tapWallet.createPsbtTx({
+      const taprootResponse = await tapWallet.createBtcTx({
         amount: 4000,
         changeAddress:
           'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
@@ -279,7 +279,7 @@ export async function runCLI() {
       })
       console.log({ taprootResponse })
 
-      const segwitResponse = await tapWallet.createPsbtTx({
+      const segwitResponse = await tapWallet.createBtcTx({
         amount: 4000,
         changeAddress: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
         feeRate: 62,

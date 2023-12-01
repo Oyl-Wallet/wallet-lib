@@ -216,7 +216,7 @@ export declare class Wallet {
      * @returns {Promise<Object>} A promise that resolves to an object containing transaction ID and other response data from the API client.
      * @param {boolean} params.isDry - A boolean indicating whether to broadcast the transaction or not.
      */
-    createPsbtTx({ publicKey, from, to, changeAddress, amount, feeRate, signer, isDry, }: {
+    createBtcTx({ publicKey, from, to, changeAddress, amount, feeRate, signer, isDry, }: {
         publicKey: string;
         from: string;
         to: string;
