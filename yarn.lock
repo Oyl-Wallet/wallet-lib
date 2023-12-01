@@ -344,9 +344,9 @@
   integrity sha512-N+0kuo9KgrUQ1Sn/ifDXsvg0TTleP7rIy4zOBGECxAljqvqfqpTfzx0Q1NUedOixRMBfe2Whhb056a42cWs26Q==
 
 "@types/node@^18.18.8":
-  version "18.18.14"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.18.14.tgz#26771c647f2842af57eb96191cd615d845164295"
-  integrity sha512-iSOeNeXYNYNLLOMDSVPvIFojclvMZ/HDY2dU17kUlcsOsSQETbWIslJbYLZgA+ox8g2XQwSHKTkght1a5X26lQ==
+  version "18.19.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.19.0.tgz#e86ce256c46661016fa83360bf8738eb4efdc88c"
+  integrity sha512-667KNhaD7U29mT5wf+TZUnrzPrlL2GNQ5N0BMjO2oNULhBxX0/FKCkm6JMu0Jh7Z+1LwUlR21ekd7KhIboNFNw==
   dependencies:
     undici-types "~5.26.4"
 
@@ -621,10 +621,10 @@ bitcoinjs-message@2.2.0, bitcoinjs-message@^2.2.0:
     secp256k1 "^3.0.1"
     varuint-bitcoin "^1.0.1"
 
-bitcore-lib@^10.0.17, bitcore-lib@^10.0.5:
-  version "10.0.17"
-  resolved "https://registry.yarnpkg.com/bitcore-lib/-/bitcore-lib-10.0.17.tgz#3e81a9b40878f54eb10097478a25854c709269cd"
-  integrity sha512-DYU/XXMpOzjcyfcrFpR7/jAS3DinnHFbfztOQD25EArC+qj8DbvHyCfiMoL0deBMT4PtTHoNXepqsDJo/1K5JQ==
+bitcore-lib@^10.0.21, bitcore-lib@^10.0.5:
+  version "10.0.21"
+  resolved "https://registry.yarnpkg.com/bitcore-lib/-/bitcore-lib-10.0.21.tgz#3afb32dca7e5843836d608958bac0a057d57b304"
+  integrity sha512-oYB1BrHjeRHqdrZ+j/cVm+M0XGxRDDjDiX4wP9QWQGAZkvS6DQGeNIndwS7m7BA18H76PJRhBM+DrSV2medpXg==
   dependencies:
     bech32 "=2.0.0"
     bip-schnorr "=0.6.4"
@@ -636,11 +636,11 @@ bitcore-lib@^10.0.17, bitcore-lib@^10.0.5:
     lodash "^4.17.20"
 
 bitcore-mnemonic@^10.0.5:
-  version "10.0.17"
-  resolved "https://registry.yarnpkg.com/bitcore-mnemonic/-/bitcore-mnemonic-10.0.17.tgz#1d76af54a6d06a39388733c728c18a59a230f361"
-  integrity sha512-PN6JU5R+Qs/DQhm2g6yNvrEIGY86KCEcodRT319FFVcOf3UepBiosm6SSALxbg9iaVmv7CKevTLwXzXABbDy5A==
+  version "10.0.21"
+  resolved "https://registry.yarnpkg.com/bitcore-mnemonic/-/bitcore-mnemonic-10.0.21.tgz#26f3dc8e52a23ea88ee0b63494506051688cc474"
+  integrity sha512-98zbb49nBcQkt0jaK+11zQuHokiy+seVwb7K1CHMq7vA1c5E4knejs8u9qZ8WiB8W1H7MHYBCtvfFr76VhHlHA==
   dependencies:
-    bitcore-lib "^10.0.17"
+    bitcore-lib "^10.0.21"
     unorm "^1.4.1"
 
 bn.js@=4.11.8:

@@ -729,7 +729,7 @@ export class Wallet {
       //@ts-ignore
       psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
       const txId = psbt.extractTransaction().getId()
-      const rawTx = psbt.toHex()
+      const rawTx = psbt.extractTransaction().toHex()
       const rawTxBase64 = psbt.toBase64()
       return {
         txId,
