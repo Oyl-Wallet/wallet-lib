@@ -225,7 +225,10 @@ export declare class Wallet {
         feeRate: number;
         signer: any;
         isDry?: boolean;
-    }): Promise<any>;
+    }): Promise<{
+        rawTx: string;
+        rawTxBase64: string;
+    }>;
     /**
      * Retrieves information about a SegWit address.
      * @param {Object} params - The parameters containing the address information.

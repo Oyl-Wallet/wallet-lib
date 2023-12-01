@@ -904,7 +904,7 @@ export class Wallet {
     const tx = new PSBTTransaction(signer, address, pubKey, addressType, fee)
 
     //SIGN AND FINALIZE THE PSBT
-    const signedPsbt = await tx.signPsbt(psbt, true, true)
+    const signedPsbt = await tx.signPsbt(psbt, true)
     //@ts-ignore
     psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
 
