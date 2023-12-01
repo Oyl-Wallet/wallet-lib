@@ -54,7 +54,7 @@ export const getBtcPrice = async () => {
 
     return jsonResponse
   } catch (error) {
-    console.log(Error)
+    console.log(error)
   }
 }
 
@@ -94,7 +94,6 @@ export const getMetaUtxos = async (
     for (const inscription of inscriptions) {
       if (inscription.detail.location.includes(utxo.tx_hash_big_endian)) {
         formattedUtxo.inscriptions.push(inscription.detail)
-      } else {
       }
     }
 

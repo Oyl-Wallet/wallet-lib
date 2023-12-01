@@ -694,6 +694,7 @@ export class Wallet {
           tmpSum += nonOrdUtxo.satoshis
         }
       }
+
       if (
         nonOrdUtxos.length === 0 ||
         tx.getTotalOutput() > tx.getTotalInput()

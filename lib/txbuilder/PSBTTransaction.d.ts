@@ -116,7 +116,7 @@ export declare class PSBTTransaction {
     signInputs(psbt: bitcoin.Psbt, toSignInputs: ToSignInput[]): Promise<void>;
     /**
      * Creates a signed PSBT for the transaction.
-     * @returns {Promise<bitcoin.Psbt>} A promise that resolves to the signed PSBT instance.
+     * @returns {Promise<bitcoin.Psbt>} A promise that resolves to the signed and finalized PSBT instance.
      */
     createSignedPsbt(): Promise<bitcoin.Psbt>;
     /**

@@ -251,24 +251,24 @@ export class PSBTTransaction {
         }
       }
 
-      if (script && !isSigned) {
-        const address = PsbtAddress.fromOutputScript(script, psbtNetwork)
-        if (isRevealTx || (!isRevealTx && this.address === address)) {
-          if (v.tapInternalKey) {
-            toSignInputs.push({
-              index: index,
-              publicKey: this.pubkey,
-              sighashTypes: v.sighashType ? [v.sighashType] : undefined,
-            })
-          }
-        } else {
-          toSignInputs.push({
-            index: index,
-            publicKey: this.segwitPubKey,
-            sighashTypes: v.sighashType ? [v.sighashType] : undefined,
-          })
-        }
+      // if (script && !isSigned) {
+      const address = PsbtAddress.fromOutputScript(script, psbtNetwork)
+      if (isRevealTx || (!isRevealTx && this.address === address)) {
+        // if (v.tapInternalKey) {
+        toSignInputs.push({
+          index: index,
+          publicKey: this.pubkey,
+          sighashTypes: v.sighashType ? [v.sighashType] : undefined,
+        })
+        // }
+      } else {
+        toSignInputs.push({
+          index: index,
+          publicKey: this.pubkey,
+          sighashTypes: v.sighashType ? [v.sighashType] : undefined,
+        })
       }
+      // }
     })
 
     return toSignInputs
@@ -278,18 +278,22 @@ export class PSBTTransaction {
     const taprootInputs: ToSignInput[] = []
     const segwitInputs: ToSignInput[] = []
     toSignInputs.forEach(({ index, publicKey }) => {
-      if (publicKey === this.pubkey) {
+      if (publicKey.slice(0, 2) === '02') {
         taprootInputs.push(toSignInputs[index])
       }
-      if (this.segwitPubKey && this.segwitSigner) {
-        if (publicKey === this.segwitPubKey) {
-          segwitInputs.push(toSignInputs[index])
-        }
+      if (publicKey.slice(0, 2) === '03') {
+        segwitInputs.push(toSignInputs[index])
       }
     })
-    await this.signer(psbt, taprootInputs)
-    if (this.segwitSigner && segwitInputs.length > 0) {
-      await this.segwitSigner(psbt, segwitInputs)
+
+    if (segwitInputs.length > 0) {
+      console.log('SEGWIT SIGNER!')
+      await this.signer(psbt, segwitInputs)
+    } else if (taprootInputs.length > 0) {
+      console.log('TAPROOT SIGNER!')
+      await this.signer(psbt, taprootInputs)
+    } else {
+      console.error('NO INPUTS!')
     }
   }
 
