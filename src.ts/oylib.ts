@@ -737,20 +737,10 @@ export class Wallet {
       const txId = psbt.extractTransaction().getId()
       const rawTx = psbt.toHex()
       const rawTxBase64 = psbt.toBase64()
-      if (isDry) {
-        console.log('DRY!!!!')
-        return {
-          txId: psbt.extractTransaction().getId(),
-          rawTx,
-          rawTxBase64,
-        }
-      }
-
-      console.log('BROADCASTING!!!!')
-      const result = await this.apiClient.pushTx({ transactionHex: rawTx })
       return {
         txId,
-        ...result,
+        rawTx,
+        rawTxBase64,
       }
     } catch (error) {
       console.error(error)
