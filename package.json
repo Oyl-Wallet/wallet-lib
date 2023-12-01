@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "prettier": "prettier --write ./src.ts/**/*.ts",
-    "fix:modules": "node scripts/fix-modules.js"
+    "postinstall": "node scripts/fix-modules.js"
   },
   "bin": {
     "oyl-cli": "./bin/cli.js"
