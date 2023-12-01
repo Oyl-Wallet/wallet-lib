@@ -222,6 +222,7 @@ export declare class Wallet {
         signer: any;
         publicKey: string;
     }): Promise<{
+        txId: string;
         rawTx: string;
         rawTxBase64: string;
     }>;
