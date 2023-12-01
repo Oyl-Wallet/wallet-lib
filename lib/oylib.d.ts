@@ -206,25 +206,21 @@ export declare class Wallet {
     /**
      * Creates a Partially Signed Bitcoin Transaction (PSBT) to send regular satoshis, signs and broadcasts it.
      * @param {Object} params - The parameters for creating the PSBT.
-     * @param {string} params.publicKey - The public key associated with the transaction.
-     * @param {string} params.from - The sending address.
      * @param {string} params.to - The receiving address.
-     * @param {string} params.changeAddress - The change address.
+     * @param {string} params.from - The sending address.
      * @param {string} params.amount - The amount to send.
      * @param {number} params.feeRate - The transaction fee rate.
      * @param {any} params.signer - The bound signer method to sign the transaction.
+     * @param {string} params.publicKey - The public key associated with the transaction.
      * @returns {Promise<Object>} A promise that resolves to an object containing transaction ID and other response data from the API client.
-     * @param {boolean} params.isDry - A boolean indicating whether to broadcast the transaction or not.
      */
-    createBtcTx({ publicKey, from, to, changeAddress, amount, feeRate, signer, isDry, }: {
-        publicKey: string;
-        from: string;
+    createBtcTx({ to, from, amount, feeRate, signer, publicKey, }: {
         to: string;
-        changeAddress: string;
+        from: string;
         amount: number;
         feeRate: number;
         signer: any;
-        isDry?: boolean;
+        publicKey: string;
     }): Promise<{
         rawTx: string;
         rawTxBase64: string;

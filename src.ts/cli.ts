@@ -266,27 +266,24 @@ export async function runCLI() {
       break
     case 'send':
       const taprootResponse = await tapWallet.createBtcTx({
-        amount: 4000,
-        changeAddress:
-          'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
-        feeRate: 62,
+        to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
         from: 'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
+        amount: 4000,
+        feeRate: 62,
+        signer: taprootSigner,
         publicKey:
           '02ebb592b5f1a2450766487d451f3a6fb2a584703ef64c6acb613db62797f943be',
-        signer: taprootSigner,
-        to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
       })
       console.log({ taprootResponse })
 
       const segwitResponse = await tapWallet.createBtcTx({
-        amount: 4000,
-        changeAddress: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
-        feeRate: 62,
+        to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
         from: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
+        amount: 4000,
+        feeRate: 62,
+        signer: segwitSigner,
         publicKey:
           '03ad1e146771ae624b49b463560766f5950a9341964a936ae6bf1627fda8d3b83b',
-        signer: segwitSigner,
-        to: 'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
       })
       console.log({ segwitResponse })
 

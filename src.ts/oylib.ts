@@ -620,32 +620,28 @@ export class Wallet {
   /**
    * Creates a Partially Signed Bitcoin Transaction (PSBT) to send regular satoshis, signs and broadcasts it.
    * @param {Object} params - The parameters for creating the PSBT.
-   * @param {string} params.publicKey - The public key associated with the transaction.
-   * @param {string} params.from - The sending address.
    * @param {string} params.to - The receiving address.
-   * @param {string} params.changeAddress - The change address.
+   * @param {string} params.from - The sending address.
    * @param {string} params.amount - The amount to send.
    * @param {number} params.feeRate - The transaction fee rate.
    * @param {any} params.signer - The bound signer method to sign the transaction.
+   * @param {string} params.publicKey - The public key associated with the transaction.
    * @returns {Promise<Object>} A promise that resolves to an object containing transaction ID and other response data from the API client.
    */
   async createBtcTx({
-    publicKey,
-    from,
     to,
-    changeAddress,
+    from,
     amount,
     feeRate,
     signer,
+    publicKey,
   }: {
-    publicKey: string
-    from: string
     to: string
-    changeAddress: string
+    from: string
     amount: number
     feeRate: number
     signer: any
-    isDry?: boolean
+    publicKey: string
   }) {
     try {
       const utxos = await this.getUtxosArtifacts({ address: from })
@@ -661,7 +657,7 @@ export class Wallet {
       )
 
       tx.addOutput(to, amount)
-      tx.setChangeAddress(changeAddress)
+      tx.setChangeAddress(from)
       const outputAmount = tx.getTotalOutput()
 
       const nonOrdUtxos = []
@@ -732,9 +728,11 @@ export class Wallet {
 
       //@ts-ignore
       psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = false
+      const txId = psbt.extractTransaction().getId()
       const rawTx = psbt.toHex()
       const rawTxBase64 = psbt.toBase64()
       return {
+        txId,
         rawTx,
         rawTxBase64,
       }
