@@ -18,6 +18,7 @@ import { AccountManager, customPaths } from './wallet/accountsManager'
 import {
   AddressType,
   InscribeTransfer,
+  Network,
   ProviderOptions,
   Providers,
   RecoverAccountOptions,
@@ -51,14 +52,27 @@ export class Oyl {
   /**
    * Initializes a new instance of the Wallet class.
    */
-  constructor() {
+  constructor(network?: Network) {
+    switch(network) {
+      case 'mainnet':
+        this.sandshrewBtcClient = new SandshrewBitcoinClient('https://mainnet.sandshrew.io/v1/d6aebfed1769128379aca7d215f0b689')
+        this.esploraRpc = new EsploraRpc('https://mainnet.sandshrew.io/v1/154f9aaa25a986241357836c37f8d71')
+        break;
+      case 'testnet':
+        this.sandshrewBtcClient = new SandshrewBitcoinClient('https://testnet.sandshrew.io/v1/d6aebfed1769128379aca7d215f0b689')
+        this.esploraRpc = new EsploraRpc('https://testnet.sandshrew.io/v1/154f9aaa25a986241357836c37f8d71')
+        break
+      case 'regtest':
+        this.sandshrewBtcClient = new SandshrewBitcoinClient('http://localhost:3000/v1/regtest')
+        this.esploraRpc = new EsploraRpc('http://localhost:3000/v1/regtest')
+        break
+      default:
+        this.sandshrewBtcClient = new SandshrewBitcoinClient('https://mainnet.sandshrew.io/v1/d6aebfed1769128379aca7d215f0b689')
+        this.esploraRpc = new EsploraRpc('https://mainnet.sandshrew.io/v1/154f9aaa25a986241357836c37f8d71')
+    }
+
     this.apiClient = new OylApiClient({ host: 'https://api.oyl.gg' })
-    this.esploraRpc = new EsploraRpc(
-      'https://mainnet.sandshrew.io/v1/154f9aaa25a986241357836c37f8d71'
-    )
-    this.sandshrewBtcClient = new SandshrewBitcoinClient(
-      'https://sandshrew.io/v1/d6aebfed1769128379aca7d215f0b689'
-    )
+
     this.fromProvider()
     //create wallet should optionally take in a private key
     this.wallet = this.createWallet({})
