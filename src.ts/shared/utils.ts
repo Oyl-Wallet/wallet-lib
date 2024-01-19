@@ -466,7 +466,7 @@ export const inscribe = async ({
   signedPsbt.finalizeAllInputs()
 
   const commitPsbtHash = signedPsbt.toHex()
-  const commitTxPsbt: bitcoin.Psbt = bitcoin.Psbt.fromHex(commitPsbtHash, {
+  const commitTxPsbt = bitcoin.Psbt.fromHex(commitPsbtHash, {
     network: getNetwork(network),
   })
 
