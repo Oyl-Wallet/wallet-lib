@@ -26,6 +26,7 @@ import {
 } from '../txbuilder/buildOrdTx'
 import { isTaprootInput, toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
 import { SandshrewBitcoinClient } from '../rpclient/sandshrew'
+import { EsploraRpc } from '../rpclient/esplora'
 
 export interface IBISWalletIx {
   validity: any
@@ -389,6 +390,8 @@ export const inscribe = async ({
   taprootUtxos,
   taprootPrivateKey,
   segwitPk,
+  sandshrewBtcClient,
+  esploraRpc,
 }: {
   ticker: string
   amount: number
@@ -408,163 +411,165 @@ export const inscribe = async ({
   taprootUtxos: Utxo[]
   taprootPrivateKey: string
   segwitPk: string
+  sandshrewBtcClient: SandshrewBitcoinClient
+  esploraRpc: EsploraRpc
 }) => {
-  try {
-    const secret = taprootPrivateKey
+  const secret = taprootPrivateKey
+  const secKey = ecc2.keys.get_seckey(String(secret))
+  const pubKey = ecc2.keys.get_pubkey(String(secret), true)
+  const content = `{"p":"brc-20","op":"transfer","tick":"${ticker}","amt":"${amount}"}`
 
-    const secKey = ecc2.keys.get_seckey(String(secret))
-    const pubKey = ecc2.keys.get_pubkey(String(secret), true)
-    const content = `{"p":"brc-20","op":"transfer","tick":"${ticker}","amt":"${amount}"}`
+  const script = createInscriptionScript(pubKey, content)
+  const tapleaf = Tap.encodeScript(script)
+  const [tpubkey, cblock] = Tap.getPubKey(pubKey, { target: tapleaf })
+  const inscriberAddress = Address.p2tr.fromPubKey(tpubkey, network)
 
-    const script = createInscriptionScript(pubKey, content)
-    const tapleaf = Tap.encodeScript(script)
-    const [tpubkey, cblock] = Tap.getPubKey(pubKey, { target: tapleaf })
-    const inscriberAddress = Address.p2tr.fromPubKey(tpubkey, network)
+  const psbt = new bitcoin.Psbt({ network: getNetwork(network) })
 
-    const psbt = new bitcoin.Psbt({ network: getNetwork(network) })
+  psbt.addOutput({
+    value: 546,
+    address: inscriberAddress,
+  })
 
-    psbt.addOutput({
-      value: 546,
-      address: inscriberAddress,
+  await getUtxosForFees({
+    payFeesWithSegwit: payFeesWithSegwit,
+    psbtTx: psbt,
+    taprootUtxos: taprootUtxos,
+    segwitUtxos: segwitUtxos,
+    inscription: { isInscription: true, inscriberAddress: inscriberAddress },
+    segwitAddress: segwitAddress,
+    feeRate: feeRate,
+    taprootAddress: inputAddress,
+    segwitPubKey: segwitPublicKey,
+    network: getNetwork(network),
+    fromAddress: inputAddress,
+  })
+
+  const toSignInputs: ToSignInput[] = await formatOptionsToSignInputs({
+    _psbt: psbt,
+    isRevealTx: false,
+    pubkey: taprootPublicKey,
+    segwitPubkey: segwitPublicKey,
+    segwitAddress: segwitAddress,
+    taprootAddress: inputAddress,
+    network: getNetwork(network),
+  })
+
+  const signedPsbt = await signInputs(
+    psbt,
+    toSignInputs,
+    taprootPublicKey,
+    segwitPublicKey,
+    segwitSigner,
+    taprootSigner
+  )
+  signedPsbt.finalizeAllInputs()
+
+  const commitPsbtHash = signedPsbt.toHex()
+  const commitTxPsbt: bitcoin.Psbt = bitcoin.Psbt.fromHex(commitPsbtHash, {
+    network: getNetwork(network),
+  })
+
+  const commitTxHex = commitTxPsbt.extractTransaction().toHex()
+  const commitTxId = commitTxPsbt.extractTransaction().getId()
+
+  const [result] = await sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([
+    commitTxHex,
+  ])
+
+  if (!result.allowed) {
+    throw new Error(result['reject-reason'])
+  }
+
+  if (!isDry) {
+    await sandshrewBtcClient.bitcoindRpc.sendRawTransaction(commitTxHex)
+
+    const txResult = await waitForTransaction({
+      txId: commitTxId,
+      sandshrewBtcClient,
     })
 
-    await getUtxosForFees({
-      payFeesWithSegwit: payFeesWithSegwit,
-      psbtTx: psbt,
-      taprootUtxos: taprootUtxos,
-      segwitUtxos: segwitUtxos,
-      inscription: { isInscription: true, inscriberAddress: inscriberAddress },
-      segwitAddress: segwitAddress,
-      feeRate: feeRate,
-      taprootAddress: inputAddress,
-      segwitPubKey: segwitPublicKey,
-      network: getNetwork(network),
-      fromAddress: inputAddress,
-    })
-
-    const toSignInputs: ToSignInput[] = await formatOptionsToSignInputs({
-      _psbt: psbt,
-      isRevealTx: false,
-      pubkey: taprootPublicKey,
-      segwitPubkey: segwitPublicKey,
-      segwitAddress: segwitAddress,
-      taprootAddress: inputAddress,
-      network: getNetwork(network),
-    })
-
-    const signedPsbt = await signInputs(
-      psbt,
-      toSignInputs,
-      taprootPublicKey,
-      segwitPublicKey,
-      segwitSigner,
-      taprootSigner
-    )
-    signedPsbt.finalizeAllInputs()
-
-    const commitPsbtHash = signedPsbt.toHex()
-    const commitTxPsbt: bitcoin.Psbt = bitcoin.Psbt.fromHex(commitPsbtHash, {
-      network: getNetwork(network),
-    })
-
-    const commitTxHex = commitTxPsbt.extractTransaction().toHex()
-    let commitTxId: string
-    if (isDry) {
-      commitTxId = commitTxPsbt.extractTransaction().getId()
-    } else {
-      const { result } = await callBTCRPCEndpoint(
-        'sendrawtransaction',
-        commitTxHex,
-        network
-      )
-      commitTxId = result
+    if (!txResult) {
+      return { error: 'ERROR WAITING FOR COMMIT TX' }
     }
+  }
 
-    if (!isDry) {
-      const txResult = await waitForTransaction(commitTxId, network)
-      if (!txResult) {
-        return { error: 'ERROR WAITING FOR COMMIT TX' }
-      }
-    }
+  const commitTxOutput0 = await getOutputValueByVOutIndex({
+    txId: commitTxId,
+    vOut: 0,
+    esploraRpc,
+  })
+  if (commitTxOutput0[0] === 0 || !commitTxOutput0) {
+    return { error: 'ERROR GETTING FIRST INPUT VALUE' }
+  }
 
-    const commitTxOutput0 = await getOutputValueByVOutIndex(
-      commitTxId,
-      0,
-      network
-    )
-    if (commitTxOutput0[0] === 0 || !commitTxOutput0) {
-      return { error: 'ERROR GETTING FIRST INPUT VALUE' }
-    }
+  const commitTxOutput1 = await getOutputValueByVOutIndex({
+    txId: commitTxId,
+    vOut: 1,
+    esploraRpc,
+  })
+  if (commitTxOutput1[0] === 0 || !commitTxOutput1) {
+    return { error: 'ERROR GETTING FIRST INPUT VALUE' }
+  }
 
-    const commitTxOutput1 = await getOutputValueByVOutIndex(
-      commitTxId,
-      1,
-      network
-    )
-    if (commitTxOutput1[0] === 0 || !commitTxOutput1) {
-      return { error: 'ERROR GETTING FIRST INPUT VALUE' }
-    }
+  const vB = 149 + 96 + 12
+  const fee = vB * feeRate
 
-    const vB = 149 + 96 + 12
-    const fee = vB * feeRate
-
-    const txData = Tx.create({
-      vin: [
-        {
-          txid: commitTxId,
-          vout: 0,
-          prevout: {
-            value: 546,
-            scriptPubKey: ['OP_1', tpubkey],
-          },
-        },
-        {
-          txid: commitTxId,
-          vout: 2,
-          prevout: {
-            value: fee,
-            scriptPubKey: ['OP_1', tpubkey],
-          },
-        },
-      ],
-      vout: [
-        {
+  const txData = Tx.create({
+    vin: [
+      {
+        txid: commitTxId,
+        vout: 0,
+        prevout: {
           value: 546,
-          scriptPubKey: Address.toScriptPubKey(outputAddress),
+          scriptPubKey: ['OP_1', tpubkey],
         },
-      ],
-    })
+      },
+      {
+        txid: commitTxId,
+        vout: 2,
+        prevout: {
+          value: fee,
+          scriptPubKey: ['OP_1', tpubkey],
+        },
+      },
+    ],
+    vout: [
+      {
+        value: 546,
+        scriptPubKey: Address.toScriptPubKey(outputAddress),
+      },
+    ],
+  })
 
-    const sig = Signer.taproot.sign(secKey, txData, 0, {
-      extension: tapleaf,
-    })
-    txData.vin[0].witness = [sig, script, cblock]
+  const sig = Signer.taproot.sign(secKey, txData, 0, {
+    extension: tapleaf,
+  })
+  txData.vin[0].witness = [sig, script, cblock]
 
-    const sig2 = Signer.taproot.sign(secKey, txData, 1, {
-      extension: tapleaf,
-    })
+  const sig2 = Signer.taproot.sign(secKey, txData, 1, {
+    extension: tapleaf,
+  })
 
-    txData.vin[1].witness = [sig2, script, cblock]
+  txData.vin[1].witness = [sig2, script, cblock]
 
-    console.log(Tx.encode(txData).hex)
+  const sendTxHex = Tx.encode(txData).hex
 
-    if (!isDry) {
-      const { result, error, id } = await callBTCRPCEndpoint(
-        'sendrawtransaction',
-        Tx.encode(txData).hex,
-        network
-      )
-      console.log(result, error, id)
-      return { txnId: result }
-    } else {
-      return {
-        commitRawTxn: commitTxHex,
-        txnId: Tx.util.getTxid(txData),
-        rawTxn: Tx.encode(txData).hex,
-      }
-    }
-  } catch (e: any) {
-    return { error: e.message }
+  const [sendInscriptionResult] =
+    await sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([sendTxHex])
+
+  if (!sendInscriptionResult.allowed) {
+    throw new Error(sendInscriptionResult['reject-reason'])
+  }
+
+  if (!isDry) {
+    await sandshrewBtcClient.bitcoindRpc.sendRawTransaction(sendTxHex)
+  }
+
+  return {
+    commitTxHex,
+    txId: commitTxId,
+    rawTx: commitTxHex,
   }
 }
 
@@ -586,48 +591,16 @@ export const createInscriptionScript = (pubKey: any, content: any) => {
   ] as string[]
 }
 
-const INSCRIPTION_PREPARE_SAT_AMOUNT = 4000
-
 export let RPC_ADDR =
   'https://mainnet.sandshrew.io/v1/6e3bc3c289591bb447c116fda149b094'
 
-export const callBTCRPCEndpoint = async (
-  method: string,
-  params: string | string[],
-  network: string
-) => {
-  if (network === 'testnet') {
-    RPC_ADDR =
-      'https://testnet.sandshrew.io/v1/6e3bc3c289591bb447c116fda149b094'
-  }
-  if (network === 'regtest') {
-    RPC_ADDR === 'http://localhost:3000/v1/regtest'
-  }
-  const data = JSON.stringify({
-    jsonrpc: '2.0',
-    id: method,
-    method: method,
-    params: [params],
-  })
-
-  // @ts-ignore
-  return await axios
-    .post(RPC_ADDR, data, {
-      headers: {
-        'content-type': 'application/json',
-      },
-    })
-    .then((res) => res.data)
-    .catch((e) => {
-      console.error(e.response)
-      throw e
-    })
-}
-
-export async function waitForTransaction(
-  txId: string,
-  network: string
-): Promise<[boolean, any?]> {
+export async function waitForTransaction({
+  txId,
+  sandshrewBtcClient,
+}: {
+  txId: string
+  sandshrewBtcClient: SandshrewBitcoinClient
+}): Promise<[boolean, any?]> {
   console.log('WAITING FOR TRANSACTION: ', txId)
   const timeout: number = 60000 // 1 minute in milliseconds
 
@@ -636,12 +609,12 @@ export async function waitForTransaction(
   while (true) {
     try {
       // Call the endpoint to check the transaction
-      const response = await callBTCRPCEndpoint('esplora_tx', txId, network)
+      const result = await sandshrewBtcClient.bitcoindRpc.getMemPoolEntry(txId)
 
       // Check if the transaction is found
-      if (response && response.result) {
+      if (result) {
         console.log('Transaction found in mempool:', txId)
-        return [true, response]
+        return [true, result]
       }
 
       // Check for timeout
@@ -665,33 +638,24 @@ export async function waitForTransaction(
   }
 }
 
-export async function getOutputValueByVOutIndex(
-  commitTxId: string,
-  vOut: number,
-  network: 'testnet' | 'mainnet' | 'regtest' | 'main' = 'mainnet'
-): Promise<any[] | null> {
+export async function getOutputValueByVOutIndex({
+  txId,
+  vOut,
+  esploraRpc,
+}: {
+  txId: string
+  vOut: number
+  esploraRpc: EsploraRpc
+}): Promise<any[] | null> {
   const timeout: number = 60000 // 1 minute in milliseconds
   const startTime: number = Date.now()
 
   while (true) {
     try {
-      // Call to get the transaction details
-      const txDetails = await callBTCRPCEndpoint(
-        'esplora_tx',
-        commitTxId,
-        network
-      )
+      const txDetails = await esploraRpc.getTxInfo(txId)
 
-      if (
-        txDetails &&
-        txDetails.result &&
-        txDetails.result.vout &&
-        txDetails.result.vout.length > 0
-      ) {
-        return [
-          txDetails.result.vout[vOut].value,
-          txDetails.result.vout[vOut].scriptpubkey,
-        ]
+      if (txDetails?.vout && txDetails.vout.length > 0) {
+        return [txDetails.vout[vOut].value, txDetails.vout[vOut].scriptpubkey]
       }
 
       // Check for timeout
@@ -826,7 +790,7 @@ export const sendCollectible = async ({
   taprootUtxos,
   segwitUtxos,
   metaOutputValue,
-  sandshrew,
+  sandshrewBtcClient,
 }: {
   inscriptionId: string
   inputAddress: string
@@ -844,7 +808,7 @@ export const sendCollectible = async ({
   taprootUtxos: Utxo[]
   segwitUtxos: Utxo[]
   metaOutputValue: number
-  sandshrew: SandshrewBitcoinClient
+  sandshrewBtcClient: SandshrewBitcoinClient
 }) => {
   const psbt = new bitcoin.Psbt({ network: getNetwork(network) })
 
@@ -895,14 +859,16 @@ export const sendCollectible = async ({
   const rawTx = signedPsbt.extractTransaction().toHex()
   const txId = signedPsbt.extractTransaction().getId()
 
-  const [result] = await sandshrew.bitcoindRpc.testMemPoolAccept([rawTx])
+  const [result] = await sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([
+    rawTx,
+  ])
 
   if (!result.allowed) {
     throw new Error(result['reject-reason'])
   }
 
   if (!isDry) {
-    await sandshrew.bitcoindRpc.sendRawTransaction(rawTx)
+    await sandshrewBtcClient.bitcoindRpc.sendRawTransaction(rawTx)
   }
 
   return { txId, rawTx }

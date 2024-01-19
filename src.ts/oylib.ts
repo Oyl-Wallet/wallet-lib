@@ -920,6 +920,8 @@ export class Oyl {
           segwitPrivateKey.keyring.keyring._index2wallet[0][1].privateKey.toString(
             'hex'
           ),
+        sandshrewBtcClient: this.sandshrewBtcClient,
+        esploraRpc: this.esploraRpc,
       })
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -1003,7 +1005,7 @@ export class Oyl {
         taprootUtxos: taprootUtxos,
         segwitUtxos: segwitUtxos,
         metaOutputValue: metaOutputValue,
-        sandshrew: this.sandshrewBtcClient,
+        sandshrewBtcClient: this.sandshrewBtcClient,
       })
     } catch (error) {
       console.log(error)
