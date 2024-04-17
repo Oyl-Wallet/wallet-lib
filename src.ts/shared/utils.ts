@@ -23,6 +23,7 @@ import {
 import { isTaprootInput, toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
 import { SandshrewBitcoinClient } from '../rpclient/sandshrew'
 import { EsploraRpc } from '../rpclient/esplora'
+import { getAddressType } from '../transactions'
 
 bitcoin.initEccLib(ecc)
 
@@ -961,16 +962,50 @@ export const addBtcUtxo = async ({
     usingAlt = true
   }
   const amountGathered = calculateAmountGatheredUtxo(utxosToSend.selectedUtxos)
+  const altSpendAddressType = getAddressType(altSpendAddress)
+  const spendAddressType = getAddressType(spendAddress)
+  let redeemScript: Buffer = null
+  if (addressTypeMap[altSpendAddressType] === 'p2sh' && usingAlt === true) {
+    const p2wpkhAlt = bitcoin.payments.p2wpkh({
+      pubkey: Buffer.from(altSpendPubKey, 'hex'),
+      network,
+    })
+    const p2shAlt = bitcoin.payments.p2sh({ redeem: p2wpkhAlt, network })
+    redeemScript = p2shAlt.redeem.output
+  }
+  if (addressTypeMap[spendAddressType] === 'p2sh') {
+    const p2wpkhSpend = bitcoin.payments.p2wpkh({
+      pubkey: Buffer.from(spendPubKey, 'hex'),
+      network,
+    })
+    const p2shSpend = bitcoin.payments.p2sh({ redeem: p2wpkhSpend, network })
+    redeemScript = p2shSpend.redeem.output
+  }
 
   for (let i = 0; i < utxosToSend.selectedUtxos.length; i++) {
-    psbt.addInput({
-      hash: utxosToSend.selectedUtxos[i].txId,
-      index: utxosToSend.selectedUtxos[i].outputIndex,
-      witnessUtxo: {
-        value: utxosToSend.selectedUtxos[i].satoshis,
-        script: Buffer.from(utxosToSend.selectedUtxos[i].scriptPk, 'hex'),
-      },
-    })
+    if (redeemScript !== null) {
+      psbt.addInput({
+        hash: utxosToSend.selectedUtxos[i].txId,
+        index: utxosToSend.selectedUtxos[i].outputIndex,
+        witnessUtxo: {
+          value: utxosToSend.selectedUtxos[i].satoshis,
+          script: Buffer.from(utxosToSend.selectedUtxos[i].scriptPk, 'hex'),
+        },
+        redeemScript: redeemScript,
+      })
+      continue
+    }
+    if (redeemScript === null) {
+      psbt.addInput({
+        hash: utxosToSend.selectedUtxos[i].txId,
+        index: utxosToSend.selectedUtxos[i].outputIndex,
+        witnessUtxo: {
+          value: utxosToSend.selectedUtxos[i].satoshis,
+          script: Buffer.from(utxosToSend.selectedUtxos[i].scriptPk, 'hex'),
+        },
+      })
+      continue
+    }
   }
 
   psbt.addOutput({
@@ -979,12 +1014,10 @@ export const addBtcUtxo = async ({
   })
 
   const changeAmount = amountGathered - amount - fee
-  if (changeAmount > 546) {
-    psbt.addOutput({
-      address: spendAddress,
-      value: changeAmount,
-    })
-  }
+  psbt.addOutput({
+    address: spendAddress,
+    value: changeAmount,
+  })
 
   const updatedPsbt = await formatInputsToSign({
     _psbt: psbt,

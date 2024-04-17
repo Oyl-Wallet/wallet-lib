@@ -4,11 +4,13 @@ import { ECPairInterface } from 'ecpair';
 type walletInit = {
     segwitPrivateKey?: string;
     taprootPrivateKey?: string;
+    nestedSegwitPrivateKey?: string;
 };
 export declare class Signer {
     network: bitcoin.Network;
     segwitKeyPair: ECPairInterface;
     taprootKeyPair: ECPairInterface;
+    nestedSegwitKeyPair: ECPairInterface;
     addresses: walletInit;
     constructor(network: bitcoin.Network, keys: walletInit);
     signSegwitInput({ rawPsbt, inputNumber, finalize, }: {
@@ -32,6 +34,13 @@ export declare class Signer {
         signedPsbt: string;
     }>;
     signAllSegwitInputs({ rawPsbt, finalize, }: {
+        rawPsbt: string;
+        finalize: boolean;
+    }): Promise<{
+        signedPsbt: string;
+        signedHexPsbt: string;
+    }>;
+    signAllNestedSegwitInputs({ rawPsbt, finalize, }: {
         rawPsbt: string;
         finalize: boolean;
     }): Promise<{

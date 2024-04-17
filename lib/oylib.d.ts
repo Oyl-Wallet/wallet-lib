@@ -211,8 +211,8 @@ export declare class Oyl {
     }): Promise<{
         txId: string;
         rawTx: string;
-        size: number;
-        weight: number;
+        size: any;
+        weight: any;
         fee: number;
         satsPerVByte: string;
     }>;
@@ -336,8 +336,8 @@ export declare class Oyl {
     }): Promise<{
         txId: string;
         rawTx: string;
-        size: number;
-        weight: number;
+        size: any;
+        weight: any;
         fee: number;
         satsPerVByte: string;
     }>;
@@ -437,8 +437,8 @@ export declare class Oyl {
     }): Promise<{
         txId: string;
         rawTx: string;
-        size: number;
-        weight: number;
+        size: any;
+        weight: any;
         fee: number;
         satsPerVByte: string;
     }>;
@@ -495,8 +495,8 @@ export declare class Oyl {
     }): Promise<{
         txId: string;
         rawTxn: string;
-        weight: number;
-        size: number;
+        weight: any;
+        size: any;
         fee: number;
         satsPerVByte: string;
     }>;

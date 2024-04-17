@@ -1,17 +1,19 @@
 import * as bitcoin from 'bitcoinjs-lib'
 import { ECPair, assertHex, tweakSigner } from '../shared/utils'
 import { ECPairInterface } from 'ecpair'
-import { toXOnly } from '@sadoprotocol/ordit-sdk'
+import crypto from 'node:crypto'
 
 type walletInit = {
   segwitPrivateKey?: string
   taprootPrivateKey?: string
+  nestedSegwitPrivateKey?: string
 }
 
 export class Signer {
   network: bitcoin.Network
   segwitKeyPair: ECPairInterface
   taprootKeyPair: ECPairInterface
+  nestedSegwitKeyPair: ECPairInterface
   addresses: walletInit
   constructor(network: bitcoin.Network, keys: walletInit) {
     if (keys.segwitPrivateKey) {
@@ -22,6 +24,11 @@ export class Signer {
     if (keys.taprootPrivateKey) {
       this.taprootKeyPair = ECPair.fromPrivateKey(
         Buffer.from(keys.taprootPrivateKey, 'hex')
+      )
+    }
+    if (keys.nestedSegwitPrivateKey) {
+      this.nestedSegwitKeyPair = ECPair.fromPrivateKey(
+        Buffer.from(keys.nestedSegwitPrivateKey, 'hex')
       )
     }
     this.network = network
@@ -145,6 +152,45 @@ export class Signer {
 
       if (matchingPubKey) {
         unSignedPsbt.signInput(i, this.segwitKeyPair)
+        if (finalize) {
+          unSignedPsbt.finalizeInput(i)
+        }
+      }
+    }
+
+    const signedPsbt = unSignedPsbt.toBase64()
+    const signedHexPsbt = unSignedPsbt.toHex()
+
+    return { signedPsbt: signedPsbt, signedHexPsbt: signedHexPsbt }
+  }
+
+  async signAllNestedSegwitInputs({
+    rawPsbt,
+    finalize,
+  }: {
+    rawPsbt: string
+    finalize: boolean
+  }) {
+    if (!this.segwitKeyPair) {
+      throw new Error('Segwit signer was not initialized')
+    }
+    let unSignedPsbt = bitcoin.Psbt.fromBase64(rawPsbt)
+    const p2wpkh = bitcoin.payments.p2wpkh({
+      pubkey: this.nestedSegwitKeyPair.publicKey,
+      network: this.network,
+    })
+    const p2sh = bitcoin.payments.p2sh({
+      redeem: p2wpkh,
+      network: this.network,
+    }).redeem.output
+
+    for (let i = 0; i < unSignedPsbt.inputCount; i++) {
+      const matchingRedeemScript =
+        unSignedPsbt.data.inputs[i]?.redeemScript.toString('hex') ===
+        p2sh.toString('hex')
+
+      if (matchingRedeemScript) {
+        unSignedPsbt.signInput(i, this.nestedSegwitKeyPair)
         if (finalize) {
           unSignedPsbt.finalizeInput(i)
         }

@@ -607,11 +607,7 @@ export class Oyl {
     if (addressTypeMap[addressType] === 'p2pkh') {
       throw new Error('Sending bitcoin to legacy address is not supported')
     }
-    if (addressTypeMap[addressType] === 'p2sh') {
-      throw new Error(
-        'Sending bitcoin to a nested-segwit address is not supported'
-      )
-    }
+
     let spendUtxos: Utxo[] | undefined
     let altSpendUtxos: Utxo[] | undefined
 
@@ -654,7 +650,14 @@ export class Oyl {
       finalize: true,
     })
 
-    return this.pushPsbt({ psbtBase64: taprootSigned })
+    const { signedPsbt: nestedSigned } = await signer.signAllNestedSegwitInputs(
+      {
+        rawPsbt: taprootSigned,
+        finalize: true,
+      }
+    )
+
+    return this.pushPsbt({ psbtBase64: nestedSigned })
   }
 
   async createBtcTx({
@@ -685,11 +688,6 @@ export class Oyl {
     const addressType = getAddressType(toAddress)
     if (addressTypeMap[addressType] === 'p2pkh') {
       throw new Error('Sending bitcoin to legacy address is not supported')
-    }
-    if (addressTypeMap[addressType] === 'p2sh') {
-      throw new Error(
-        'Sending bitcoin to a nested-segwit address is not supported'
-      )
     }
 
     let { psbt: updatedPsbt, fee } = await addBtcUtxo({
@@ -905,16 +903,22 @@ export class Oyl {
       throw new Error(result['reject-reason'])
     }
     await this.sandshrewBtcClient.bitcoindRpc.sendRawTransaction(rawTx)
+    await waitForTransaction({
+      txId,
+      sandshrewBtcClient: this.sandshrewBtcClient,
+    })
 
-    const { size, weight, fee } = await this.esploraRpc.getTxInfo(txId)
+    const txInMemPool =
+      await this.sandshrewBtcClient.bitcoindRpc.getMemPoolEntry(txId)
+    const fee = txInMemPool.fees['base'] * 10 ** 8
 
     return {
       txId,
       rawTx,
-      size: size,
-      weight: weight,
+      size: txInMemPool.vsize,
+      weight: txInMemPool.weight,
       fee: fee,
-      satsPerVByte: (fee / (weight / 4)).toFixed(2),
+      satsPerVByte: (fee / (txInMemPool.weight / 4)).toFixed(2),
     }
   }
 
@@ -1383,7 +1387,7 @@ export class Oyl {
         psbtBase64: taprootSendSignedPsbt,
       })
       const feeTxPromise = successTxIds.map((txId) =>
-        this.esploraRpc.getTxInfo(txId)
+        this.sandshrewBtcClient.bitcoindRpc.getMemPoolEntry(txId)
       )
 
       const feeData = await Promise.all(feeTxPromise)
@@ -1392,10 +1396,12 @@ export class Oyl {
       let totalWeight = 0
       let totalSatsPerVByte = 0
       for (const tx of feeData) {
-        totalSize += tx.size
+        totalSize += tx.vsize
         totalWeight += tx.weight
-        totalFee += tx.fee
-        totalSatsPerVByte += Number((tx.fee / (tx.weight / 4)).toFixed(2))
+        totalFee += tx.fees['base'] * 10 ** 8
+        totalSatsPerVByte += Number(
+          ((tx.fees['base'] * 10 ** 8) / (tx.weight / 4)).toFixed(2)
+        )
       }
 
       return {
