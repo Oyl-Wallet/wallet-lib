@@ -73,7 +73,7 @@ export declare const formatInputsToSign: ({ _psbt, senderPublicKey, network, }: 
 }) => Promise<bitcoin.Psbt>;
 export declare const timeout: (n: any) => Promise<unknown>;
 export declare const signInputs: (psbt: bitcoin.Psbt, toSignInputs: ToSignInput[], taprootPubkey: string, segwitPubKey: string, segwitSigner: any, taprootSigner: any) => Promise<bitcoin.Psbt>;
-export declare const createInscriptionScript: (pubKey: any, content: any) => string[];
+export declare const createInscriptionScript: (pubKey: string, content: any) => string;
 export declare const createRuneSendScript: ({ runeId, amount, sendOutputIndex, pointer, }: {
     runeId: string;
     amount: number;
@@ -96,7 +96,10 @@ export declare function getOutputValueByVOutIndex({ txId, vOut, esploraRpc, }: {
     txId: string;
     vOut: number;
     esploraRpc: EsploraRpc;
-}): Promise<any[] | null>;
+}): Promise<{
+    value: number;
+    script: string;
+} | null>;
 export declare function calculateTaprootTxSize(taprootInputCount: number, nonTaprootInputCount: number, outputCount: number): number;
 export declare function getRawTxnHashFromTxnId(txnId: string): Promise<any>;
 export declare const isP2PKH: (script: Buffer, network: Network) => BitcoinPaymentType;

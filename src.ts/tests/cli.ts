@@ -271,7 +271,7 @@ const argv = yargs(hideBin(process.argv))
         alias: 'a',
         describe: 'Amount of brc-20 to send',
         type: 'number',
-        default: 5,
+        default: 100,
         demandOption: true,
       })
       .option('feeRate', {
@@ -514,7 +514,7 @@ export async function runCLI() {
         token: ticker,
         amount,
         signer,
-        feeRate,
+        feeRate: 60,
         fromAddress: networkConfig.taprootAddress,
         fromPubKey: networkConfig.taprootPubKey,
         toAddress: to,

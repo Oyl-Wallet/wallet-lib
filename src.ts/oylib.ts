@@ -48,6 +48,8 @@ import { Signer } from './signer'
 import { Address, Tap, Tx } from '@cmdcode/tapscript'
 import * as cmdcode from '@cmdcode/tapscript'
 import { OylTransactionError } from './errors'
+import { Tapleaf, Taptree } from 'bitcoinjs-lib/src/types'
+import { toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
 
 export const NESTED_SEGWIT_HD_PATH = "m/49'/0'/0'/0"
 export const TAPROOT_HD_PATH = "m/86'/0'/0'/0"
@@ -1105,20 +1107,22 @@ export class Oyl {
     })
 
     const psbt = new bitcoin.Psbt({ network: this.network })
-    const secret = signer.taprootKeyPair.privateKey.toString('hex')
 
-    const pubKey = ecc2.keys.get_pubkey(String(secret), true)
-
-    const script = createInscriptionScript(pubKey, content)
-    const tapleaf = Tap.encodeScript(script)
-    const [tpubkey] = Tap.getPubKey(pubKey, { target: tapleaf })
-    const inscriberAddress = Address.p2tr.fromPubKey(
-      tpubkey,
-      this.currentNetwork
+    const script = createInscriptionScript(
+      signer.taprootKeyPair.publicKey.toString('hex'),
+      content
     )
+    const finalScript: Tapleaf = { output: bitcoin.script.fromASM(script) }
+
+    const inscriberInfo = bitcoin.payments.p2tr({
+      internalPubkey: toXOnly(signer.taprootKeyPair.publicKey),
+      scriptTree: finalScript,
+      network: this.network,
+    })
+
     psbt.addOutput({
       value: Number(feeForReveal) + inscriptionSats,
-      address: inscriberAddress,
+      address: inscriberInfo.address,
     })
 
     let utxosToPayFee = findUtxosToCoverAmount(
@@ -1203,38 +1207,21 @@ export class Oyl {
     return {
       commitPsbt: formattedPsbt.toBase64(),
       utxosUsedForFees: utxosUsedForFees,
-      fee: amountNeededForInscribe,
+      inscriberInfo: inscriberInfo,
     }
   }
 
   async inscriptionRevealTx({
     receiverAddress,
+    inscriberInfo,
     signer,
-    content,
-    feeRate,
     commitTxId,
   }: {
     receiverAddress: string
     signer: Signer
-    content: string
-    feeRate: number
+    inscriberInfo: bitcoin.payments.Payment
     commitTxId: string
   }) {
-    const revealTxSize = calculateTaprootTxSize(1, 0, 1)
-    const feeForReveal =
-      revealTxSize * feeRate < 200 ? 200 : revealTxSize * feeRate
-
-    const revealSats = feeForReveal + inscriptionSats
-    const secret = signer.taprootKeyPair.privateKey.toString('hex')
-
-    const secKey = ecc2.keys.get_seckey(String(secret))
-
-    const pubKey = ecc2.keys.get_pubkey(String(secret), true)
-
-    const script = createInscriptionScript(pubKey, content)
-    const tapleaf = Tap.encodeScript(script)
-    const [tpubkey, cblock] = Tap.getPubKey(pubKey, { target: tapleaf })
-
     const commitTxOutput = await getOutputValueByVOutIndex({
       txId: commitTxId,
       vOut: 0,
@@ -1245,35 +1232,43 @@ export class Oyl {
       throw new Error('ERROR GETTING FIRST INPUT VALUE')
     }
 
-    const txData = Tx.create({
-      vin: [
+    const psbt = new bitcoin.Psbt({ network: this.network })
+
+    const p2pk_redeem = {
+      output: inscriberInfo.scriptTree['output'],
+      redeemVersion: 192,
+    }
+
+    const p2pk_p2tr = bitcoin.payments.p2tr({
+      internalPubkey: toXOnly(signer.taprootKeyPair.publicKey),
+      scriptTree: inscriberInfo.scriptTree,
+      redeem: p2pk_redeem,
+      network: this.network,
+    })
+
+    psbt.addInput({
+      hash: commitTxId,
+      index: 0,
+      witnessUtxo: {
+        value: commitTxOutput.value,
+        script: Buffer.from(commitTxOutput.script, 'hex'),
+      },
+      tapLeafScript: [
         {
-          txid: commitTxId,
-          vout: 0,
-          prevout: {
-            value: revealSats,
-            scriptPubKey: ['OP_1', tpubkey],
-          },
-        },
-      ],
-      vout: [
-        {
-          value: 546,
-          scriptPubKey: Address.toScriptPubKey(receiverAddress),
+          leafVersion: p2pk_redeem.redeemVersion,
+          script: p2pk_redeem.output,
+          controlBlock: p2pk_p2tr.witness![p2pk_p2tr.witness!.length - 1],
         },
       ],
     })
 
-    const sig = cmdcode.Signer.taproot.sign(secKey, txData, 0, {
-      extension: tapleaf,
+    psbt.addOutput({
+      value: 546,
+      address: receiverAddress,
     })
-
-    txData.vin[0].witness = [sig, script, cblock]
-
-    const inscriptionTxHex = Tx.encode(txData).hex
 
     return {
-      revealTx: inscriptionTxHex,
+      revealPsbt: psbt.toBase64(),
     }
   }
 
@@ -1307,15 +1302,16 @@ export class Oyl {
     try {
       const content = `{"p":"brc-20","op":"transfer","tick":"${token}","amt":"${amount}"}`
 
-      const { commitPsbt, utxosUsedForFees } = await this.inscriptionCommitTx({
-        content,
-        spendAddress,
-        spendPubKey,
-        signer,
-        altSpendPubKey,
-        altSpendAddress,
-        feeRate,
-      })
+      const { commitPsbt, inscriberInfo, utxosUsedForFees } =
+        await this.inscriptionCommitTx({
+          content,
+          spendAddress,
+          spendPubKey,
+          signer,
+          altSpendPubKey,
+          altSpendAddress,
+          feeRate,
+        })
 
       const { signedPsbt: segwitSigned } = await signer.signAllSegwitInputs({
         rawPsbt: commitPsbt,
@@ -1330,7 +1326,6 @@ export class Oyl {
       const { txId: commitTxId } = await this.pushPsbt({
         psbtBase64: taprootSigned,
       })
-
       successTxIds.push(commitTxId)
 
       await waitForTransaction({
@@ -1338,16 +1333,23 @@ export class Oyl {
         sandshrewBtcClient: this.sandshrewBtcClient,
       })
 
-      const { revealTx } = await this.inscriptionRevealTx({
+      const { revealPsbt } = await this.inscriptionRevealTx({
         receiverAddress: fromAddress,
+        inscriberInfo,
         signer,
-        content,
-        commitTxId: commitTxId,
-        feeRate,
+        commitTxId,
       })
 
-      const revealTxId =
-        await this.sandshrewBtcClient.bitcoindRpc.sendRawTransaction(revealTx)
+      const { signedPsbt: revealSigned } = await signer.signAllTaprootInputs({
+        rawPsbt: revealPsbt,
+        finalize: true,
+      })
+
+      const { txId: revealTxId } = await this.pushPsbt({
+        psbtBase64: revealSigned,
+      })
+
+      console.log('here2')
 
       if (!revealTxId) {
         throw new Error('Unable to reveal inscription.')
@@ -1373,6 +1375,8 @@ export class Oyl {
         utxoId: revealTxId,
         utxosUsedForFees: utxosUsedForFees,
       })
+
+      console.log('here3')
 
       const { signedPsbt: segwitSendSignedPsbt } =
         await signer.signAllSegwitInputs({

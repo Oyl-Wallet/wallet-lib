@@ -378,16 +378,15 @@ export declare class Oyl {
     }): Promise<{
         commitPsbt: string;
         utxosUsedForFees: string[];
-        fee: number;
+        inscriberInfo: bitcoin.payments.Payment;
     }>;
-    inscriptionRevealTx({ receiverAddress, signer, content, feeRate, commitTxId, }: {
+    inscriptionRevealTx({ receiverAddress, inscriberInfo, signer, commitTxId, }: {
         receiverAddress: string;
         signer: Signer;
-        content: string;
-        feeRate: number;
+        inscriberInfo: bitcoin.payments.Payment;
         commitTxId: string;
     }): Promise<{
-        revealTx: string;
+        revealPsbt: string;
     }>;
     sendBRC20({ fromAddress, fromPubKey, toAddress, spendPubKey, feeRate, altSpendPubKey, spendAddress, altSpendAddress, signer, token, amount, }: {
         fromAddress: string;
