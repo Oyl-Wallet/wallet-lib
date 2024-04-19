@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { Utxo } from './txbuilder';
 import { SandshrewBitcoinClient } from './rpclient/sandshrew';
 import { EsploraRpc } from './rpclient/esplora';
@@ -378,12 +379,12 @@ export declare class Oyl {
     }): Promise<{
         commitPsbt: string;
         utxosUsedForFees: string[];
-        inscriberInfo: bitcoin.payments.Payment;
+        script: Buffer;
     }>;
-    inscriptionRevealTx({ receiverAddress, inscriberInfo, signer, commitTxId, }: {
+    inscriptionRevealTx({ receiverAddress, script, signer, commitTxId, }: {
         receiverAddress: string;
         signer: Signer;
-        inscriberInfo: bitcoin.payments.Payment;
+        script: Buffer;
         commitTxId: string;
     }): Promise<{
         revealPsbt: string;

@@ -167,7 +167,6 @@ const tapWallet = new Oyl({
   version: 'v1',
   projectId: process.env.SANDSHREW_PROJECT_ID,
 })
-
 const testWallet = new Oyl({
   network: 'testnet',
   baseUrl: 'https://testnet.sandshrew.io',
@@ -175,10 +174,18 @@ const testWallet = new Oyl({
   projectId: process.env.SANDSHREW_PROJECT_ID,
 })
 
+const regtestWallet = new Oyl({
+  network: 'testnet',
+  baseUrl: 'http://localhost:3000',
+  version: 'v1',
+  projectId: 'regtest', //process.env.SANDSHREW_PROJECT_ID,
+})
+
 const XVERSE = 'xverse'
 const UNISAT = 'unisat'
 const MAINNET = 'mainnet'
 const TESTNET = 'testnet'
+const REGTEST = 'regtest'
 
 const config = {
   [MAINNET]: {
@@ -213,6 +220,24 @@ const config = {
       '03d307e838fbeffe6cfaaf5c4eb6a21cc00dff4acceb88760e5c511921173fda47',
     destinationTaprootAddress:
       'tb1pstyemhl9n2hydg079rgrh8jhj9s7zdxh2g5u8apwk0c8yc9ge4eqp59l22',
+    feeRate: 1,
+  },
+  [REGTEST]: {
+    mnemonic: process.env.REGTEST_MNEMONIC,
+    wallet: regtestWallet as Oyl,
+    segwitPrivateKey: process.env.TESTNET_SEGWIT_PRIVATEKEY,
+    segwitHdPath: SEGWIT_HD_PATH,
+    taprootPrivateKey: process.env.TESTNET_TAPROOT_PRIVATEKEY,
+    taprootHdPath: TAPROOT_HD_PATH,
+    taprootAddress:
+      'bcrt1p45un5d47hvfhx6mfezr6x0htpanw23tgll7ppn6hj6gfzu3x3dnsaegh8d',
+    taprootPubKey:
+      '022ffc336daa8196f1aa796135a568b1125ba08c2879c22468effea8e4a0c4c8b9',
+    segwitAddress: 'bcrt1qzr9vhs60g6qlmk7x3dd7g3ja30wyts48sxuemv',
+    segwitPubKey:
+      '03d3af89f242cc0df1d7142e9a354a59b1cd119c12c31ff226b32fb77fa12acce2',
+    destinationTaprootAddress:
+      'bcrt1p45un5d47hvfhx6mfezr6x0htpanw23tgll7ppn6hj6gfzu3x3dnsaegh8d',
     feeRate: 1,
   },
 }
@@ -453,7 +478,6 @@ export async function runCLI() {
       return await testMarketplaceBuy()
     case 'send':
       const res = await networkConfig.wallet.sendBtc({
-        fromAddress: networkConfig.taprootAddress,
         toAddress: networkConfig.taprootAddress,
         feeRate: 45,
         amount: 50,
@@ -472,7 +496,6 @@ export async function runCLI() {
         spendPubKey: networkConfig.taprootPubKey,
         altSpendAddress: networkConfig.segwitAddress,
         altSpendPubKey: networkConfig.segwitPubKey,
-        signer,
         amount: 546,
       })
       console.log(sendEstimateResponse)
@@ -538,6 +561,7 @@ export async function runCLI() {
           spendPubKey: networkConfig.segwitPubKey,
           altSpendPubKey: networkConfig.taprootPubKey,
           altSpendAddress: networkConfig.taprootAddress,
+          inscriptionId: '',
         })
 
       console.log(sendInscriptionResponse)
@@ -835,8 +859,10 @@ export async function runCLI() {
       )
     case 'bis-test':
       return console.log(
-        await await networkConfig.wallet.apiClient.getAllInscriptionsByAddress(
-          'tb1pstyemhl9n2hydg079rgrh8jhj9s7zdxh2g5u8apwk0c8yc9ge4eqp59l22'
+        (
+          await networkConfig.wallet.apiClient.getAllInscriptionsByAddress(
+            'tb1pstyemhl9n2hydg079rgrh8jhj9s7zdxh2g5u8apwk0c8yc9ge4eqp59l22'
+          )
         ).data
       )
 

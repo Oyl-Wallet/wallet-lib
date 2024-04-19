@@ -109,16 +109,12 @@ export class Signer {
     let tweakedSigner = tweakSigner(this.taprootKeyPair)
 
     for (let i = 0; i < unSignedPsbt.inputCount; i++) {
-      const matchingPubKey =
-        unSignedPsbt.inputHasPubkey(i, tweakedSigner.publicKey) ||
-        unSignedPsbt.inputHasPubkey(i, toXOnly(tweakedSigner.publicKey))
-
-      console.log(
-        tweakedSigner.publicKey,
-        unSignedPsbt.data.inputs[0].tapInternalKey
+      const matchingPubKey = unSignedPsbt.inputHasPubkey(
+        i,
+        tweakedSigner.publicKey
       )
+
       if (matchingPubKey) {
-        console.log('valid')
         unSignedPsbt.signTaprootInput(i, tweakedSigner)
         if (finalize) {
           unSignedPsbt.finalizeInput(i)
