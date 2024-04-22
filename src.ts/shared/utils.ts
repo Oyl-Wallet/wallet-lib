@@ -899,9 +899,9 @@ export const addBtcUtxo = async ({
   network,
   spendAddress,
   spendPubKey,
-  altSpendAddress,
   altSpendPubKey,
   altSpendUtxos,
+  fee,
 }: {
   spendUtxos: any[]
   toAddress: string
@@ -911,26 +911,24 @@ export const addBtcUtxo = async ({
   network: bitcoin.Network
   spendAddress: string
   spendPubKey: string
-  altSpendAddress?: string
   altSpendPubKey?: string
   altSpendUtxos?: Utxo[]
+  fee?: number
 }) => {
   const spendableUtxos = await filterTaprootUtxos({
     taprootUtxos: spendUtxos,
   })
-  const txSize = calculateTaprootTxSize(1, 0, 2)
-  let fee = txSize * feeRate < 250 ? 250 : txSize * feeRate
-
-  let utxosToSend: any = findUtxosToCoverAmount(spendableUtxos, amount + fee)
+  let txSize = calculateTaprootTxSize(1, 0, 2)
+  const calculatedFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
+  let finalFee = fee ? fee : calculatedFee
+  let utxosToSend: any = findUtxosToCoverAmount(
+    spendableUtxos,
+    amount + finalFee
+  )
   let usingAlt = false
 
   if (utxosToSend?.selectedUtxos.length > 1) {
-    const txSize = calculateTaprootTxSize(
-      utxosToSend.selectedUtxos.length,
-      0,
-      2
-    )
-    fee = txSize * feeRate < 250 ? 250 : txSize * feeRate
+    txSize = calculateTaprootTxSize(utxosToSend.selectedUtxos.length, 0, 2)
 
     utxosToSend = findUtxosToCoverAmount(spendableUtxos, amount + fee)
   }
@@ -942,12 +940,7 @@ export const addBtcUtxo = async ({
     utxosToSend = findUtxosToCoverAmount(unFilteredAltUtxos, amount + fee)
 
     if (utxosToSend?.selectedUtxos.length > 1) {
-      const txSize = calculateTaprootTxSize(
-        utxosToSend.selectedUtxos.length,
-        0,
-        2
-      )
-      fee = txSize * feeRate < 250 ? 250 : txSize * feeRate
+      txSize = calculateTaprootTxSize(utxosToSend.selectedUtxos.length, 0, 2)
 
       utxosToSend = findUtxosToCoverAmount(spendableUtxos, amount + fee)
     }
