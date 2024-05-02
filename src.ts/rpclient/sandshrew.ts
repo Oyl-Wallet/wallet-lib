@@ -31,8 +31,7 @@ export class SandshrewBitcoinClient {
       const responseData = await response.json()
 
       if (responseData.error) {
-        console.error('JSON-RPC Error:', responseData.error)
-        return null
+        return undefined
       }
 
       return responseData.result

@@ -402,22 +402,14 @@ export const signInputs = async (
   return psbt
 }
 
-export const createInscriptionScript = (pubKey: any, content: any) => {
+export const createInscriptionScript = (pubKey: string, content: any) => {
   const mimeType = 'text/plain;charset=utf-8'
   const textEncoder = new TextEncoder()
-  const marker = textEncoder.encode('ord')
-  return [
-    pubKey,
-    'OP_CHECKSIG',
-    'OP_0',
-    'OP_IF',
-    marker,
-    '01',
-    textEncoder.encode(mimeType),
-    'OP_0',
-    textEncoder.encode(content),
-    'OP_ENDIF',
-  ] as string[]
+  const mimeTypeHex = Buffer.from(textEncoder.encode(mimeType)).toString('hex')
+  const contentHex = Buffer.from(textEncoder.encode(content)).toString('hex')
+  const markerHex = '6f7264'
+
+  return `${pubKey} OP_CHECKSIG OP_0 OP_IF ${markerHex} 01 ${mimeTypeHex} OP_0 ${contentHex} OP_ENDIF`
 }
 
 function encodeToBase26(inputString: string): string {
@@ -623,7 +615,7 @@ export async function getOutputValueByVOutIndex({
   txId: string
   vOut: number
   esploraRpc: EsploraRpc
-}): Promise<any[] | null> {
+}): Promise<{ value: number; script: string } | null> {
   const timeout: number = 60000 // 1 minute in milliseconds
   const startTime: number = Date.now()
 
@@ -631,7 +623,10 @@ export async function getOutputValueByVOutIndex({
     const txDetails = await esploraRpc.getTxInfo(txId)
 
     if (txDetails?.vout && txDetails.vout.length > 0) {
-      return [txDetails.vout[vOut].value, txDetails.vout[vOut].scriptpubkey]
+      return {
+        value: txDetails.vout[vOut].value,
+        script: txDetails.vout[vOut].scriptpubkey,
+      }
     }
 
     // Check for timeout
@@ -652,10 +647,10 @@ export function calculateTaprootTxSize(
   const baseTxSize = 10 // Base transaction size without inputs/outputs
 
   // Size contributions from inputs
-  const taprootInputSize = 57 // Average size of a Taproot input (can vary)
-  const nonTaprootInputSize = 41 // Average size of a non-Taproot input (can vary)
+  const taprootInputSize = 64 // Average size of a Taproot input (can vary)
+  const nonTaprootInputSize = 42 // Average size of a non-Taproot input (can vary)
 
-  const outputSize = 34 // Average size of an output (can vary)
+  const outputSize = 40
 
   const totalInputSize =
     taprootInputCount * taprootInputSize +
@@ -878,7 +873,11 @@ export const filterTaprootUtxos = async ({
     },
     { metaUtxos: [], nonMetaUtxos: [] }
   )
-  return nonMetaUtxos
+  const sortedNonMetaUtxos = nonMetaUtxos.sort(
+    (a, b) => b.satoshis - a.satoshis
+  )
+
+  return sortedNonMetaUtxos
 }
 
 export const filterUtxos = async ({ utxos }: { utxos: any[] }) => {
@@ -903,9 +902,9 @@ export const addBtcUtxo = async ({
   network,
   spendAddress,
   spendPubKey,
-  altSpendAddress,
   altSpendPubKey,
   altSpendUtxos,
+  fee,
 }: {
   spendUtxos: any[]
   toAddress: string
@@ -915,17 +914,14 @@ export const addBtcUtxo = async ({
   network: bitcoin.Network
   spendAddress: string
   spendPubKey: string
-  altSpendAddress?: string
   altSpendPubKey?: string
   altSpendUtxos?: Utxo[]
+  fee?: number
 }) => {
-  const spendableUtxos = await filterTaprootUtxos({
-    taprootUtxos: spendUtxos,
-  })
   const txSize = calculateTaprootTxSize(1, 0, 2)
-  let fee = txSize * feeRate < 250 ? 250 : txSize * feeRate
-
-  let utxosToSend: any = findUtxosToCoverAmount(spendableUtxos, amount + fee)
+  let calculatedFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
+  let finalFee = fee ? fee : calculatedFee
+  let utxosToSend: any = findUtxosToCoverAmount(spendUtxos, amount + finalFee)
   let usingAlt = false
 
   if (utxosToSend?.selectedUtxos.length > 1) {
@@ -936,14 +932,11 @@ export const addBtcUtxo = async ({
     )
     fee = txSize * feeRate < 250 ? 250 : txSize * feeRate
 
-    utxosToSend = findUtxosToCoverAmount(spendableUtxos, amount + fee)
+    utxosToSend = findUtxosToCoverAmount(spendUtxos, amount + finalFee)
   }
 
   if (!utxosToSend) {
-    const unFilteredAltUtxos = await filterTaprootUtxos({
-      taprootUtxos: altSpendUtxos,
-    })
-    utxosToSend = findUtxosToCoverAmount(unFilteredAltUtxos, amount + fee)
+    utxosToSend = findUtxosToCoverAmount(altSpendUtxos, amount + finalFee)
 
     if (utxosToSend?.selectedUtxos.length > 1) {
       const txSize = calculateTaprootTxSize(
@@ -953,7 +946,7 @@ export const addBtcUtxo = async ({
       )
       fee = txSize * feeRate < 250 ? 250 : txSize * feeRate
 
-      utxosToSend = findUtxosToCoverAmount(spendableUtxos, amount + fee)
+      utxosToSend = findUtxosToCoverAmount(spendUtxos, amount + finalFee)
     }
     if (!utxosToSend) {
       throw new Error('Insufficient Balance')
@@ -978,13 +971,12 @@ export const addBtcUtxo = async ({
     value: amount,
   })
 
-  const changeAmount = amountGathered - amount - fee
-  if (changeAmount > 546) {
-    psbt.addOutput({
-      address: spendAddress,
-      value: changeAmount,
-    })
-  }
+  const changeAmount = amountGathered - (finalFee + amount)
+
+  psbt.addOutput({
+    address: spendAddress,
+    value: changeAmount,
+  })
 
   const updatedPsbt = await formatInputsToSign({
     _psbt: psbt,
@@ -992,7 +984,7 @@ export const addBtcUtxo = async ({
     network,
   })
 
-  return { psbt: updatedPsbt, fee: fee }
+  return { psbt: updatedPsbt, fee: finalFee }
 }
 
 export const isValidJSON = (str: string) => {

@@ -175,6 +175,8 @@ const testWallet = new Oyl({
   projectId: process.env.SANDSHREW_PROJECT_ID,
 })
 
+testWallet.apiClient.setAuthToken(process.env.API_TOKEN)
+
 const XVERSE = 'xverse'
 const UNISAT = 'unisat'
 const MAINNET = 'mainnet'
@@ -305,6 +307,8 @@ const argv = yargs(hideBin(process.argv))
         describe: 'Inscription to be sent',
         type: 'string',
         demandOption: true,
+        default:
+          '615e568c9dd877635743439ea50df6fe11f6aef583f066fc2f917a1d62d03c5di0',
       })
       .option('feeRate', {
         alias: 'f',
@@ -453,9 +457,9 @@ export async function runCLI() {
       return await testMarketplaceBuy()
     case 'send':
       const res = await networkConfig.wallet.sendBtc({
-        fromAddress: networkConfig.taprootAddress,
-        toAddress: networkConfig.taprootAddress,
-        feeRate: 45,
+        toAddress:
+          'tb1pdz8aul7226284e57e9yn4mpyd8f52zpxc7z0gz392e6amrf0s4uq6s3sw6',
+        feeRate: 67,
         amount: 50,
         spendAddress: networkConfig.taprootAddress,
         spendPubKey: networkConfig.taprootPubKey,
@@ -512,9 +516,9 @@ export async function runCLI() {
     case 'send-brc-20':
       const sendBrc20Response = await networkConfig.wallet.sendBRC20({
         token: ticker,
-        amount,
+        amount: 3,
         signer,
-        feeRate,
+        feeRate: 30,
         fromAddress: networkConfig.taprootAddress,
         fromPubKey: networkConfig.taprootPubKey,
         toAddress: to,
@@ -530,10 +534,13 @@ export async function runCLI() {
       const sendInscriptionResponse =
         await networkConfig.wallet.sendOrdCollectible({
           signer,
-          feeRate,
+          inscriptionId:
+            '7b0bc2bd44bc336b4730c1c761c4355918adfaec664a99f68f218a0a0e8b9538i0',
+          feeRate: 40,
           fromAddress: networkConfig.taprootAddress,
           fromPubKey: networkConfig.taprootPubKey,
-          toAddress: to,
+          toAddress:
+            'tb1pstyemhl9n2hydg079rgrh8jhj9s7zdxh2g5u8apwk0c8yc9ge4eqp59l22',
           spendAddress: networkConfig.segwitAddress,
           spendPubKey: networkConfig.segwitPubKey,
           altSpendPubKey: networkConfig.taprootPubKey,

@@ -137,6 +137,10 @@ export declare class OylApiClient {
      */
     getBtcPrice(): Promise<any>;
     /**
+    * Get faucet TBTC.
+    */
+    requestFaucet(userId: string, address: string): Promise<any>;
+    /**
      * Get BTC market chart.
      * @param days - The number of days to use as interval.
      */

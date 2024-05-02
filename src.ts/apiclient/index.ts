@@ -309,6 +309,17 @@ export class OylApiClient {
     return response
   }
 
+   /**
+   * Get faucet TBTC.
+   */
+   async requestFaucet(userId: string, address: string) {
+    const response = await this._call('/request-faucet-btc', 'post', {
+      userId,
+      address
+    })
+    return response
+  }
+
   /**
    * Get BTC market chart.
    * @param days - The number of days to use as interval.

@@ -123,7 +123,7 @@ export class Signer {
 
     const signedPsbt = unSignedPsbt.toBase64()
 
-    return { signedPsbt: signedPsbt }
+    return { signedPsbt: signedPsbt, raw: unSignedPsbt }
   }
 
   async signAllSegwitInputs({

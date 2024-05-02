@@ -196,7 +196,7 @@ export class Marketplace {
           processedOffers.push(txId)
         }
         externalSwap = true
-        await timeout(2000)
+        await timeout(10000)
       } else if (offer.marketplace == 'okx' && !testnet) {
         const offerPsbt = await this.wallet.apiClient.getOkxOfferPsbt({
           offerId: offer.offerId,
@@ -221,6 +221,7 @@ export class Marketplace {
           processedOffers.push(txId)
         }
         externalSwap = true
+        await timeout(10000)
       }
     }
     if (processedOffers.length < 1) {
