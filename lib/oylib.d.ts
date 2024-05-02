@@ -346,21 +346,6 @@ export declare class Oyl {
         sentPsbt: any;
         sentPsbtBase64: string;
     }>;
-    createSegwitSigner({ mnemonic, segwitAddress, hdPathWithIndex, }: {
-        mnemonic: string;
-        segwitAddress: string;
-        hdPathWithIndex: string;
-    }): Promise<any>;
-    createTaprootSigner({ mnemonic, taprootAddress, hdPathWithIndex, }: {
-        mnemonic: string;
-        taprootAddress: string;
-        hdPathWithIndex?: string;
-    }): Promise<any>;
-    createSigner({ mnemonic, fromAddress, hdPathWithIndex, }: {
-        mnemonic: string;
-        fromAddress: string;
-        hdPathWithIndex: string;
-    }): Promise<any>;
     getRuneBalance({ address }: {
         address: string;
     }): Promise<void>;
