@@ -2423,7 +2423,7 @@ export class Oyl {
 
     let utxosToPayFee = findUtxosToCoverAmount(
       spendUtxos,
-      feeForSend + inscriptionSats
+      feeForSend + (inscriptionSats * 2)
     )
     if (utxosToPayFee?.selectedUtxos.length > 1) {
       const txSize = calculateTaprootTxSize(
@@ -2435,7 +2435,7 @@ export class Oyl {
 
       utxosToPayFee = findUtxosToCoverAmount(
         spendUtxos,
-        feeForSend + inscriptionSats
+        feeForSend + (inscriptionSats * 2)
       )
     }
 
@@ -2444,7 +2444,7 @@ export class Oyl {
       feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
       utxosToPayFee = findUtxosToCoverAmount(
         altSpendUtxos,
-        feeForSend + inscriptionSats
+        feeForSend + (inscriptionSats * 2)
       )
 
       if (utxosToPayFee?.selectedUtxos.length > 1) {
@@ -2457,7 +2457,7 @@ export class Oyl {
 
         utxosToPayFee = findUtxosToCoverAmount(
           spendUtxos,
-          feeForSend + inscriptionSats
+          feeForSend + (inscriptionSats * 2)
         )
       }
       if (!utxosToPayFee) {
@@ -2468,7 +2468,7 @@ export class Oyl {
     const feeAmountGathered = calculateAmountGatheredUtxo(
       utxosToPayFee.selectedUtxos
     )
-    const changeAmount = feeAmountGathered - feeForSend - inscriptionSats
+    const changeAmount = feeAmountGathered - feeForSend - (inscriptionSats * 2)
 
     for (let i = 0; i < utxosToPayFee.selectedUtxos.length; i++) {
       psbt.addInput({
@@ -2480,14 +2480,20 @@ export class Oyl {
         },
       })
     }
+
     psbt.addOutput({
-      address: spendAddress,
-      value: changeAmount,
+      address: fromAddress,
+      value: inscriptionSats
     })
 
     psbt.addOutput({
-      value: inscriptionSats,
       address: toAddress,
+      value: inscriptionSats
+    })
+
+    psbt.addOutput({
+      address: spendAddress,
+      value: changeAmount,
     })
 
     const script = createRuneSendScript({
