@@ -2393,7 +2393,7 @@ export class Oyl {
         },
       })
     }
-    const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 3)
+    const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 4)
     let feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
 
     let utxosToPayFee = findUtxosToCoverAmount(
@@ -2404,7 +2404,7 @@ export class Oyl {
       const txSize = calculateTaprootTxSize(
         utxosToPayFee.selectedUtxos.length + psbt.inputCount,
         0,
-        3
+        4
       )
       feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
 
@@ -2415,7 +2415,7 @@ export class Oyl {
     }
 
     if (!utxosToPayFee) {
-      const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 3)
+      const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 4)
       feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
       utxosToPayFee = findUtxosToCoverAmount(
         altSpendUtxos,
@@ -2426,7 +2426,7 @@ export class Oyl {
         const txSize = calculateTaprootTxSize(
           utxosToPayFee.selectedUtxos.length + psbt.inputCount,
           0,
-          3
+          4
         )
         feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
 
