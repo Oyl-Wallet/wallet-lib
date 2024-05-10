@@ -47,8 +47,6 @@ export const getRuneOutpointsRegtest = async (address: string) => {
   const allUtxos = await oyl.esploraRpc.getAddressUtxo(address)
   const data = []
 
-  //const inscriptionUtxos = utxosResponse.filter((utxo) => utxo.value == 546)
-
   for (const utxo of allUtxos) {
     if (utxo.txid) {
       const output = utxo.txid + ':' + utxo.vout
@@ -65,9 +63,11 @@ export const getRuneOutpointsRegtest = async (address: string) => {
           data[index].balances[0] += runeAmount
         } else {  
           // create new record
+          const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid)
+          console.log('txInfo: ', txInfo)
           data.push({
-            pkscript: utxo.scriptPk,
-            wallet_addr: utxo.address,
+            pkscript: txInfo.vout[0].scriptpubkey,
+            wallet_addr: address,
             output,
             rune_ids: [id],
             balances: [runeAmount],
