@@ -40,3 +40,49 @@ export const getAllInscriptionsByAddressRegtest = async (address: string) => {
     data,
   }
 }
+
+
+export const getRuneOutpointsRegtest = async (address: string) => {
+  const oyl = new Oyl(defaultNetworkOptions.regtest)
+
+  const allUtxos = await oyl.esploraRpc.getAddressUtxo(address)
+  const data = []
+
+  for (const utxo of allUtxos) {
+    if (utxo.txid) {
+      const output = utxo.txid + ':' + utxo.vout
+      const txDetails = await oyl.ordRpc.getTxOutput(
+        output
+      )
+      if (txDetails.runes.length > 0) {
+        const runeName = txDetails.runes[0][0]
+        const { id } = await oyl.ordRpc.getRuneByName(runeName)
+        const runeAmount = txDetails.runes[0][1].amount
+        const index = data.findIndex((rune) => rune.rune_names[0] == runeName)
+        if ( index != -1) { 
+          // update balance
+          data[index].balances[0] += runeAmount
+        } else {  
+          // create new record
+          const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid)
+          console.log('txInfo: ', txInfo)
+          data.push({
+            pkscript: txInfo.vout[0].scriptpubkey,
+            wallet_addr: address,
+            output,
+            rune_ids: [id],
+            balances: [runeAmount],
+            rune_names: [runeName],
+            spaced_rune_names: [runeName],
+            decimals: [txDetails.runes[0][1].divisibility]
+          })
+        }
+      }
+    }
+  }
+
+  return {
+    statusCode: 200,
+    data,
+  }
+}
