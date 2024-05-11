@@ -2374,13 +2374,15 @@ export class Oyl {
       )
     }
 
+    let runeUtxoVoutTotal = 0
+
     for (let i = 0; i < useableUtxos.selectedUtxos.length; i++) {
       const txSplit = useableUtxos.selectedUtxos[i].outpointId.split(':')
       const txHash = txSplit[0]
       const txIndex = txSplit[1]
       const script = useableUtxos.selectedUtxos[i].script
       const txDetails = await this.esploraRpc.getTxInfo(txHash)
-
+      runeUtxoVoutTotal += txDetails.vout[txIndex].value
       if (!txDetails?.vout || txDetails.vout.length < 1) {
         throw new Error('Unable to find rune utxo')
       }
@@ -2388,7 +2390,7 @@ export class Oyl {
         hash: txHash,
         index: Number(txIndex),
         witnessUtxo: {
-          value: txDetails.vout[txIndex].value,
+          value: txDetails.vout[txIndex].value,  
           script: Buffer.from(script, 'hex'),
         },
       })
@@ -2396,32 +2398,13 @@ export class Oyl {
     const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 4)
     let feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
 
-    let utxosToPayFee = findUtxosToCoverAmount(
-      spendUtxos,
-      feeForSend + (inscriptionSats * 2)
-    )
-    if (utxosToPayFee?.selectedUtxos.length > 1) {
-      const txSize = calculateTaprootTxSize(
-        utxosToPayFee.selectedUtxos.length + psbt.inputCount,
-        0,
-        4
-      )
-      feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+    let feeAmountGathered = 0
 
-      utxosToPayFee = findUtxosToCoverAmount(
+    if ( runeUtxoVoutTotal < feeForSend + (inscriptionSats * 2) + 2000) {
+      let utxosToPayFee = findUtxosToCoverAmount(
         spendUtxos,
         feeForSend + (inscriptionSats * 2)
       )
-    }
-
-    if (!utxosToPayFee) {
-      const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 4)
-      feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
-      utxosToPayFee = findUtxosToCoverAmount(
-        altSpendUtxos,
-        feeForSend + (inscriptionSats * 2)
-      )
-
       if (utxosToPayFee?.selectedUtxos.length > 1) {
         const txSize = calculateTaprootTxSize(
           utxosToPayFee.selectedUtxos.length + psbt.inputCount,
@@ -2435,26 +2418,55 @@ export class Oyl {
           feeForSend + (inscriptionSats * 2)
         )
       }
-      if (!utxosToPayFee) {
-        throw new Error('Insufficient Balance')
-      }
-      usingAlt = true
-    }
-    const feeAmountGathered = calculateAmountGatheredUtxo(
-      utxosToPayFee.selectedUtxos
-    )
-    const changeAmount = feeAmountGathered - feeForSend - (inscriptionSats * 2)
 
-    for (let i = 0; i < utxosToPayFee.selectedUtxos.length; i++) {
-      psbt.addInput({
-        hash: utxosToPayFee.selectedUtxos[i].txId,
-        index: utxosToPayFee.selectedUtxos[i].outputIndex,
-        witnessUtxo: {
-          value: utxosToPayFee.selectedUtxos[i].satoshis,
-          script: Buffer.from(utxosToPayFee.selectedUtxos[i].scriptPk, 'hex'),
-        },
-      })
+      if (!utxosToPayFee) {
+        const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 4)
+        feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+        utxosToPayFee = findUtxosToCoverAmount(
+          altSpendUtxos,
+          feeForSend + (inscriptionSats * 2)
+        )
+
+        if (utxosToPayFee?.selectedUtxos.length > 1) {
+          const txSize = calculateTaprootTxSize(
+            utxosToPayFee.selectedUtxos.length + psbt.inputCount,
+            0,
+            4
+          )
+          feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+
+          utxosToPayFee = findUtxosToCoverAmount(
+            spendUtxos,
+            feeForSend + (inscriptionSats * 2)
+          )
+        }
+        if (!utxosToPayFee) {
+          throw new Error('Insufficient Balance')
+        }
+        usingAlt = true
+      }
+      feeAmountGathered = calculateAmountGatheredUtxo(
+        utxosToPayFee.selectedUtxos
+      )
+
+      for (let i = 0; i < utxosToPayFee.selectedUtxos.length; i++) {
+        psbt.addInput({
+          hash: utxosToPayFee.selectedUtxos[i].txId,
+          index: utxosToPayFee.selectedUtxos[i].outputIndex,
+          witnessUtxo: {
+            value: utxosToPayFee.selectedUtxos[i].satoshis,
+            script: Buffer.from(utxosToPayFee.selectedUtxos[i].scriptPk, 'hex'),
+          },
+        })
+      }
     }
+
+    console.log('feeAmountGathered :', feeAmountGathered)
+    console.log('runeUtxoVoutTotal :',runeUtxoVoutTotal )
+    console.log('feeForSend :', feeForSend)
+    console.log('inscriptionSats * 2 :', inscriptionSats * 2)
+    const changeAmount = feeAmountGathered + runeUtxoVoutTotal - feeForSend - (inscriptionSats * 2)
+
     psbt.addOutput({
       address: fromAddress,
       value: inscriptionSats,
