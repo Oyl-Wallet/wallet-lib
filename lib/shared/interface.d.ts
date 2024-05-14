@@ -266,6 +266,7 @@ export type RuneUtxo = {
     outpointId: string;
     amount: number;
     script: string;
+    satoshis: number;
 };
 export type AddressTypes = keyof typeof addressTypeToName;
 export type AddressFormats = (typeof addressTypeToName)[AddressTypes];

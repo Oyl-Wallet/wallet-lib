@@ -190,9 +190,9 @@ const config = {
       'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
     taprootPubKey:
       '02ebb592b5f1a2450766487d451f3a6fb2a584703ef64c6acb613db62797f943be',
-    segwitAddress: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
+    segwitAddress: 'bc1qac6u4rxej8n275tmk8k4aeadxulwlxxa72dxhr',
     segwitPubKey:
-      '03ad1e146771ae624b49b463560766f5950a9341964a936ae6bf1627fda8d3b83b',
+      '03ea758e8b0d4da67e1f784d7c01cbec13e7f109fe12093332b7df31d65b308bad',
     destinationTaprootAddress:
       'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
     feeRate: 15,
@@ -550,12 +550,12 @@ export async function runCLI() {
           'bc1pstyemhl9n2hydg079rgrh8jhj9s7zdxh2g5u8apwk0c8yc9ge4eqkunss9',
         signer,
         amount: 50,
-        feeRate: 15,
+        feeRate: 18,
         fromAddress: networkConfig.taprootAddress,
-        spendAddress: networkConfig.taprootAddress,
-        spendPubKey: networkConfig.taprootPubKey,
-        altSpendPubKey: networkConfig.segwitPubKey,
-        altSpendAddress: networkConfig.segwitAddress,
+        spendAddress: networkConfig.segwitAddress,
+        spendPubKey: networkConfig.segwitPubKey,
+        altSpendPubKey: networkConfig.taprootPubKey,
+        altSpendAddress: networkConfig.taprootAddress,
       })
       console.log(sendRuneResponse)
       return sendRuneResponse
