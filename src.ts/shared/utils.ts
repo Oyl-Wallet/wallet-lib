@@ -1045,7 +1045,7 @@ export function findRuneUtxosToSpend(utxos: RuneUtxo[], target: number) {
   if (totalAmount >= target) {
     return {
       selectedUtxos,
-      change: totalAmount - target,
+      totalAmount: totalAmount,
     }
   } else {
     return undefined

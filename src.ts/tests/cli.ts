@@ -149,7 +149,7 @@ const INSCRIPTION_PREPARE_SAT_AMOUNT = 4000
 // Define an interface to represent the expected structure of the arguments.
 interface YargsArguments {
   _: string[]
-  network?: 'testnet' | 'regtest'
+  network?: 'testnet' | 'regtest' | 'mainnet'
   to?: string
   ticker?: string
   amount?: number
@@ -175,8 +175,6 @@ const testWallet = new Oyl({
   projectId: process.env.SANDSHREW_PROJECT_ID,
 })
 
-testWallet.apiClient.setAuthToken(process.env.API_TOKEN)
-
 const XVERSE = 'xverse'
 const UNISAT = 'unisat'
 const MAINNET = 'mainnet'
@@ -186,18 +184,18 @@ const config = {
   [MAINNET]: {
     mnemonic: process.env.MAINNET_MNEMONIC,
     wallet: tapWallet as Oyl,
-    segwitPrivateKey: process.env.TESTNET_SEGWIT_PRIVATEKEY,
-    taprootPrivateKey: process.env.TESTNET_TAPROOT_PRIVATEKEY,
+    segwitPrivateKey: process.env.MAINNET_SEGWIT_PRIVATEKEY,
+    taprootPrivateKey: process.env.MAINNET_TAPROOT_PRIVATEKEY,
     taprootAddress:
       'bc1ppkyawqh6lsgq4w82azgvht6qkd286mc599tyeaw4lr230ax25wgqdcldtm',
-    taprootPubkey:
+    taprootPubKey:
       '02ebb592b5f1a2450766487d451f3a6fb2a584703ef64c6acb613db62797f943be',
     segwitAddress: '3By5YxrxR7eE32ANZSA1Cw45Bf7f68nDic',
     segwitPubKey:
       '03ad1e146771ae624b49b463560766f5950a9341964a936ae6bf1627fda8d3b83b',
     destinationTaprootAddress:
       'bc1p5pvvfjtnhl32llttswchrtyd9mdzd3p7yps98tlydh2dm6zj6gqsfkmcnd',
-    feeRate: 25,
+    feeRate: 15,
   },
   [TESTNET]: {
     mnemonic: process.env.TESTNET_MNEMONIC,
@@ -435,18 +433,14 @@ const argv = yargs(hideBin(process.argv))
 
 export async function runCLI() {
   const [command] = argv._
-  const { _, network = TESTNET } = yargs.argv as YargsArguments
+  const { network } = yargs.argv as YargsArguments
   const options = Object.assign({}, yargs.argv) as YargsArguments
   const networkConfig = config[network]
 
-  let segwitSigner: bitcoin.Signer
-  const taprootSigner = await tapWallet.createTaprootSigner({
-    mnemonic: networkConfig.mnemonic,
-    taprootAddress: networkConfig.taprootAddress,
-  })
-
   const { to, amount, feeRate, ticker, psbtBase64, price } = options
-  const signer: Signer = new Signer(bitcoin.networks.testnet, {
+
+  networkConfig.wallet.apiClient.setAuthToken(process.env.API_TOKEN)
+  const signer: Signer = new Signer(bitcoin.networks.bitcoin, {
     segwitPrivateKey: networkConfig.segwitPrivateKey,
     taprootPrivateKey: networkConfig.taprootPrivateKey,
   })
@@ -551,12 +545,12 @@ export async function runCLI() {
       return sendInscriptionResponse
     case 'send-rune':
       const sendRuneResponse = await networkConfig.wallet.sendRune({
-        runeId: '2585328:8',
+        runeId: '840000:142',
         toAddress:
-          'tb1pdykkv4ldhmw2n9mpehffjk7dszltheqkhjtg3hj7p97u33jja8cq4fuph7',
+          'bc1pstyemhl9n2hydg079rgrh8jhj9s7zdxh2g5u8apwk0c8yc9ge4eqkunss9',
         signer,
-        amount: 400,
-        feeRate: 40,
+        amount: 50,
+        feeRate: 15,
         fromAddress: networkConfig.taprootAddress,
         spendAddress: networkConfig.taprootAddress,
         spendPubKey: networkConfig.taprootPubKey,
@@ -567,11 +561,11 @@ export async function runCLI() {
       return sendRuneResponse
     case 'mint-rune':
       const mintRuneResponse = await networkConfig.wallet.mintRune({
-        runeId: '2585328:8',
+        runeId: '',
         toAddress: networkConfig.taprootAddress,
         signer,
         amount: 1000,
-        feeRate: 20,
+        feeRate: 50,
         spendAddress: networkConfig.taprootAddress,
         spendPubKey: networkConfig.taprootPubKey,
         altSpendPubKey: networkConfig.segwitPubKey,

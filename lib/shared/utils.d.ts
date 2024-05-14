@@ -157,5 +157,5 @@ export declare const encodeVarint: (bigIntValue: any) => {
 };
 export declare function findRuneUtxosToSpend(utxos: RuneUtxo[], target: number): {
     selectedUtxos: RuneUtxo[];
-    change: number;
+    totalAmount: number;
 };
