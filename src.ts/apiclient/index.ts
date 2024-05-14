@@ -1,6 +1,10 @@
 import fetch from 'node-fetch'
 import { SwapBrcBid, SignedBid, OkxBid } from '../shared/interface'
-import { getAllInscriptionsByAddressRegtest } from '../tests/regtestApi'
+import { 
+  getAllInscriptionsByAddressRegtest,
+  getRuneOutpointsRegtest,
+  getRuneBalanceRegtest
+} from '../tests/regtestApi'
 
 /**
  * Represents the client for interacting with the Oyl API.
@@ -527,19 +531,27 @@ export class OylApiClient {
   }
 
   async getRuneOutpoints({ address }: { address: string }): Promise<any> {
-    return (
-      await this._call('/get-rune-outpoints', 'post', {
-        address,
-      })
-    ).data
+    if (this.regtest) {
+      return (await getRuneOutpointsRegtest(address)).data
+    } else {
+      return (
+        await this._call('/get-rune-outpoints', 'post', {
+          address,
+        })
+      ).data
+    }
   }
 
   async getRuneBalance({ address }: { address: string }): Promise<any> {
-    return (
-      await this._call('/get-rune-balance', 'post', {
-        address,
-      })
-    ).data
+    if (this.regtest) {
+      return (await getRuneBalanceRegtest(address)).data
+    } else {
+      return (
+        await this._call('/get-rune-balance', 'post', {
+          address,
+        })
+      ).data
+    }
   }
 
   async getOutputRune({ output }: { output: string }): Promise<any> {
