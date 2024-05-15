@@ -57,15 +57,15 @@ export const getRuneOutpointsRegtest = async (address: string) => {
         const runeName = txDetails.runes[0][0]
         const { id } = await oyl.ordRpc.getRuneByName(runeName)
         const runeAmount = txDetails.runes[0][1].amount
-        const index = data.findIndex((rune) => rune.rune_names[0] == runeName)
+        const index = data.findIndex((rune) => rune.rune_name == runeName);
         if ( index != -1) { 
           // update balance
-          data[index].balances[0] += runeAmount
+          data[index].total_balance += runeAmount;
         } else {  
           // create new record
           const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid)
           data.push({
-            pkscript: txInfo.vout[0].scriptpubkey,
+            pkscript: txInfo.vout[1].scriptpubkey,
             wallet_addr: address,
             output,
             rune_ids: [id],
@@ -98,18 +98,19 @@ export const getRuneBalanceRegtest = async (address: string) => {
         output
       )
       if (txDetails.runes.length > 0) {
-        const runeName = txDetails.runes[0][0]
-        const { id } = await oyl.ordRpc.getRuneByName(runeName)
+        const runeName = txDetails.runes[0][0];
+        const { id } = await oyl.ordRpc.getRuneByName(runeName);
         const runeAmount = txDetails.runes[0][1].amount
-        const index = data.findIndex((rune) => rune.rune_names[0] == runeName)
-        if ( index != -1) { 
+        const index = data.findIndex((rune) => rune.rune_name == runeName);
+        if (index != -1) {
           // update balance
-          data[index].balances[0] += runeAmount
-        } else {  
+          data[index].total_balance += runeAmount;
+        }
+        else {
           // create new record
-          const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid)
+          const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid);
           data.push({
-            pkscript: txInfo.vout[0].scriptpubkey,
+            pkscript: txInfo.vout[1].scriptpubkey,
             wallet_addr: address,
             rune_id: id,
             total_balance: runeAmount,
@@ -117,7 +118,7 @@ export const getRuneBalanceRegtest = async (address: string) => {
             spaced_rune_name: runeName,
             decimals: 0,
             avg_unit_price_in_sats: null
-          })
+          });
         }
       }
     }
