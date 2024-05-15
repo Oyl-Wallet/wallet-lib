@@ -2364,14 +2364,11 @@ export class Oyl {
     let usingAlt = false
     let spendUtxos: Utxo[] | undefined
     let altSpendUtxos: Utxo[] | undefined
+    let utxosToPayFee: any | undefined
 
-    spendUtxos = await this.getSpendableUtxos(spendAddress)
-
-    altSpendUtxos = await this.getSpendableUtxos(altSpendAddress)
-
-    if (!spendUtxos && !altSpendUtxos) {
-      throw new Error('No utxos to spend available')
-    }
+    // if (!spendUtxos && !altSpendUtxos) {
+    //   throw new Error('No utxos to spend available')
+    // }
 
     const psbt = new bitcoin.Psbt({ network: this.network })
 
@@ -2408,6 +2405,7 @@ export class Oyl {
       )
     }
 
+    let runesInputSats = 0;
     for (let i = 0; i < useableUtxos.selectedUtxos.length; i++) {
       const txSplit = useableUtxos.selectedUtxos[i].outpointId.split(':')
       const txHash = txSplit[0]
@@ -2422,70 +2420,97 @@ export class Oyl {
           script: Buffer.from(script, 'hex'),
         },
       })
+      runesInputSats += useableUtxos.selectedUtxos[i].satoshis;
     }
-    const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 3)
+
+    // Estimate Tx size with the Runes UTXO input(s), and 4 outputs: runes change, runes send, btc change, op_return
+    const txSize = calculateTaprootTxSize(psbt.inputCount, 0, 4)
     let feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
 
-    let utxosToPayFee = findUtxosToCoverAmount(
-      spendUtxos,
-      feeForSend + inscriptionSats
-    )
-    if (utxosToPayFee?.selectedUtxos.length > 1) {
-      const txSize = calculateTaprootTxSize(
-        utxosToPayFee.selectedUtxos.length + psbt.inputCount,
-        0,
-        3
-      )
-      feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+    const estimatedVoutSats = feeForSend + (inscriptionSats * 2)
+
+    // If the Rune vin will not cover the total, get some spend sats
+    // Added a buffer
+    if (runesInputSats < estimatedVoutSats + 500) {
+
+      // First check spendAddress
+
+      // Tx will have an additional input, so resize
+      // We should determine the type of address, but the wallet always has spendAddress as segwit
+      // So, add non-taproot input)
+      const txSize = calculateTaprootTxSize(psbt.inputCount, 1, 4)
+      let feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+
+      spendUtxos = await this.getSpendableUtxos(spendAddress)
 
       utxosToPayFee = findUtxosToCoverAmount(
         spendUtxos,
-        feeForSend + inscriptionSats
+        feeForSend + (inscriptionSats * 2)
       )
-    }
-
-    if (!utxosToPayFee) {
-      const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 3)
-      feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
-      utxosToPayFee = findUtxosToCoverAmount(
-        altSpendUtxos,
-        feeForSend + inscriptionSats
-      )
-
       if (utxosToPayFee?.selectedUtxos.length > 1) {
         const txSize = calculateTaprootTxSize(
-          utxosToPayFee.selectedUtxos.length + psbt.inputCount,
-          0,
-          3
+          psbt.inputCount,
+          utxosToPayFee.selectedUtxos.length,
+          4
         )
         feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
 
         utxosToPayFee = findUtxosToCoverAmount(
           spendUtxos,
-          feeForSend + inscriptionSats
+          feeForSend + (inscriptionSats * 2)
         )
       }
+
       if (!utxosToPayFee) {
-        throw new Error('Insufficient Balance')
+        altSpendUtxos = await this.getSpendableUtxos(altSpendAddress)
+        if (!altSpendUtxos) {
+          throw new Error('No utxos to spend available')
+        }
+        // In wallet, altSpend is always Taproot, so can assume for now, but need to change this
+        const txSize = calculateTaprootTxSize(1 + psbt.inputCount, 0, 4)
+        feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+        utxosToPayFee = findUtxosToCoverAmount(
+          altSpendUtxos,
+          feeForSend + (inscriptionSats * 2)
+        )
+
+        if (utxosToPayFee?.selectedUtxos.length > 1) {
+          const txSize = calculateTaprootTxSize(
+            utxosToPayFee.selectedUtxos.length + psbt.inputCount,
+            0,
+            4
+          )
+          feeForSend = fee ? fee : txSize * feeRate < 250 ? 250 : txSize * feeRate
+
+          utxosToPayFee = findUtxosToCoverAmount(
+            altSpendUtxos,
+            feeForSend + (inscriptionSats * 2)
+          )
+        }
+        if (!utxosToPayFee) {
+          throw new Error('Insufficient Balance')
+        }
+        usingAlt = true
       }
-      usingAlt = true
+
+      for (let i = 0; i < utxosToPayFee.selectedUtxos.length; i++) {
+        psbt.addInput({
+          hash: utxosToPayFee.selectedUtxos[i].txId,
+          index: utxosToPayFee.selectedUtxos[i].outputIndex,
+          witnessUtxo: {
+            value: utxosToPayFee.selectedUtxos[i].satoshis,
+            script: Buffer.from(utxosToPayFee.selectedUtxos[i].scriptPk, 'hex'),
+          },
+        })
+      }
     }
+
     const feeAmountGathered = calculateAmountGatheredUtxo(
       utxosToPayFee.selectedUtxos
     )
 
-    const changeAmount = feeAmountGathered - feeForSend + inscriptionSats
+    const changeAmount = runesInputSats + feeAmountGathered - feeForSend - (inscriptionSats * 2)
 
-    for (let i = 0; i < utxosToPayFee.selectedUtxos.length; i++) {
-      psbt.addInput({
-        hash: utxosToPayFee.selectedUtxos[i].txId,
-        index: utxosToPayFee.selectedUtxos[i].outputIndex,
-        witnessUtxo: {
-          value: utxosToPayFee.selectedUtxos[i].satoshis,
-          script: Buffer.from(utxosToPayFee.selectedUtxos[i].scriptPk, 'hex'),
-        },
-      })
-    }
     psbt.addOutput({
       value: inscriptionSats,
       address: fromAddress,
@@ -2497,7 +2522,7 @@ export class Oyl {
     })
 
     psbt.addOutput({
-      value: changeAmount + (useableUtxos.totalSatoshis - inscriptionSats),
+      value: changeAmount,
       address: spendAddress,
     })
 
