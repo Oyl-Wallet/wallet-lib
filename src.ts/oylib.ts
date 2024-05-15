@@ -2368,11 +2368,10 @@ export class Oyl {
 
     spendUtxos = await this.getSpendableUtxos(spendAddress)
 
-    if (!spendUtxos && altSpendAddress) {
-      altSpendUtxos = await this.getSpendableUtxos(altSpendAddress)
-      if (!altSpendUtxos) {
-        throw new Error('No utxos to spend available')
-      }
+    altSpendUtxos = await this.getSpendableUtxos(altSpendAddress)
+
+    if (!spendUtxos && !altSpendUtxos) {
+      throw new Error('No utxos to spend available')
     }
 
     const psbt = new bitcoin.Psbt({ network: this.network })
