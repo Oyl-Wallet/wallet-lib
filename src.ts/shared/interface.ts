@@ -293,7 +293,12 @@ export const addressNameToType = {
   segwit: 'p2wpkh',
 } as const
 
-export type RuneUtxo = { outpointId: string; amount: number; script: string }
+export type RuneUtxo = {
+  outpointId: string
+  amount: number
+  script: string
+  satoshis: number
+}
 
 export type AddressTypes = keyof typeof addressTypeToName
 

@@ -1033,6 +1033,7 @@ export function findRuneUtxosToSpend(utxos: RuneUtxo[], target: number) {
     return undefined
   }
   let totalAmount = 0
+  let totalSatoshi = 0
   const selectedUtxos: RuneUtxo[] = []
 
   for (const utxo of utxos) {
@@ -1040,12 +1041,14 @@ export function findRuneUtxosToSpend(utxos: RuneUtxo[], target: number) {
 
     selectedUtxos.push(utxo)
     totalAmount += utxo.amount
+    totalSatoshi += utxo.satoshis
   }
 
   if (totalAmount >= target) {
     return {
       selectedUtxos,
       totalAmount: totalAmount,
+      totalSatoshis: totalSatoshi,
     }
   } else {
     return undefined
