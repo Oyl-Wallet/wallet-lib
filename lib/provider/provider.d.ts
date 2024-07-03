@@ -16,6 +16,7 @@ export declare class Provider {
         networkType: 'signet' | 'mainnet' | 'testnet';
         version?: string;
     });
+    getHost(networkType: 'signet' | 'mainnet' | 'testnet'): "https://api.oyl.gg" | "http://localhost:3000";
     pushPsbt({ psbtHex, psbtBase64, }: {
         psbtHex?: string;
         psbtBase64?: string;

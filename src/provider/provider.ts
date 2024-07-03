@@ -5,12 +5,17 @@ import { OylApiClient } from '../apiclient'
 import * as bitcoin from 'bitcoinjs-lib'
 import { waitForTransaction } from '../shared/utils'
 
+const mainnetUrl = "https://api.oyl.gg"
+const testnetUrl = "https://api.oyl.gg"
+const signetUrl = "http://localhost:3000/"
+
 export class Provider {
   public sandshrew: SandshrewBitcoinClient
   public esplora: EsploraRpc
   public ord: OrdRpc
   public api: OylApiClient
   public network: bitcoin.networks.Network
+
 
   constructor({
     url,
@@ -39,13 +44,26 @@ export class Provider {
     this.ord = new OrdRpc(masterUrl)
     this.api = new OylApiClient({
       network: networkType,
-      host: 'https://api.oyl.gg',
+      host: this.getHost(networkType),
       testnet: isTestnet ? true : null,
       regtest: isRegtest ? true : null,
       apiKey: projectId,
     })
     this.api.setAuthToken(process.env.API_TOKEN)
     this.network = network
+  }
+
+  getHost( networkType: 'signet' | 'mainnet' | 'testnet'){
+    switch (networkType){
+      case "mainnet":
+        return mainnetUrl;
+      case "testnet":
+        return testnetUrl;
+      case "signet":
+        return signetUrl;
+      default:
+        return mainnetUrl;
+    }
   }
 
   async pushPsbt({
