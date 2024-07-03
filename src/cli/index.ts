@@ -32,19 +32,6 @@ const defaultProvider = {
     network: bitcoin.networks.regtest,
     networkType: 'mainnet',
   }),
-  testnet: new Provider({
-    url: 'https://testnet.sandshrew.io',
-    projectId: process.env.SANDSHREW_PROJECT_ID!,
-    network: bitcoin.networks.testnet,
-    networkType: 'testnet',
-  }),
-  signet: new Provider({
-    url: 'https://signet.sandshrew.io',
-    projectId: process.env.SANDSHREW_PROJECT_ID!,
-    network: bitcoin.networks.testnet,
-    networkType: 'signet',
-  }),
-
 }
 
 const program = new Command()
@@ -548,6 +535,36 @@ const apiProviderCall = new Command('api')
     }
   })
 
+const ordProviderCall = new Command('ord')
+  .description('Returns data based on ord method invoked')
+  .requiredOption(
+    '-p, --provider <provider>',
+    'provider to use to access the network.'
+  )
+  .requiredOption(
+    '-method, --method <method>',
+    'name of the method you want to call for the api.'
+  )
+  .option(
+    '-params, --parameters <parameters>',
+    'parameters for the ord method you are calling.'
+  )
+  /* @dev example call
+    oyl provider ord -method getTxOutput -params '{"ticker":"ordi"}' -p bitcoin
+
+    please note the json format if you need to pass an object.
+  */
+  .action(async (options) => {
+    const provider: Provider = defaultProvider[options.provider]
+    let isJson: object
+    try {
+      isJson = JSON.parse(options.parameters)
+      console.log(await provider.ord[options.method](isJson))
+    } catch (error) {
+      console.log(await provider.ord[options.method](options.parameters))
+    }
+  })
+
 const marketPlaceBuy = new Command('buy')
 
   .description('Returns rune details based on name provided')
@@ -623,7 +640,6 @@ const marketPlaceBuy = new Command('buy')
 
     console.log(signedTxs)
   })
-  
 
 const accountCommand = new Command('account')
   .description('Manage accounts')
@@ -655,11 +671,11 @@ const runeCommand = new Command('rune')
 const providerCommand = new Command('provider')
   .description('Functions avaialble for all provider services')
   .addCommand(apiProviderCall)
-  //.addCommand(ordProviderCall)
+  .addCommand(ordProviderCall)
 
-// const marketPlaceCommand = new Command('marketplace')
-//   .description('Functions for marketplace')
-//   .addCommand(marketPlaceBuy)
+const marketPlaceCommand = new Command('marketplace')
+  .description('Functions for marketplace')
+  .addCommand(marketPlaceBuy)
 
 program.addCommand(utxosCommand)
 program.addCommand(accountCommand)
@@ -668,6 +684,6 @@ program.addCommand(brc20Command)
 program.addCommand(collectibleCommand)
 program.addCommand(runeCommand)
 program.addCommand(providerCommand)
-//program.addCommand(marketPlaceCommand)
+program.addCommand(marketPlaceCommand)
 
 program.parse(process.argv)
