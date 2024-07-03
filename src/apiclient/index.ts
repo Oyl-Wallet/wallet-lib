@@ -538,7 +538,7 @@ export class OylApiClient {
    * @param params - Parameters for the bid.
    */
   async initCollectionSwapBid(params: SwapBrcBid): Promise<any> {
-    return await this._call('/initiate_unisat_collection_bid', 'post', params)
+    return await this._call('/initiate-unisat-collection-bid', 'post', params)
   }
 
   /**
@@ -554,7 +554,7 @@ export class OylApiClient {
    * @param params - Parameters for the signed bid.
    */
   async submitSignedCollectionBid(params: SignedBid): Promise<any> {
-    return await this._call('/finalize_unisat_collection_bid', 'post', params)
+    return await this._call('/finalize-unisat-collection-bid', 'post', params)
   }
 
   /**

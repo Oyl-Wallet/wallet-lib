@@ -17,8 +17,7 @@ import {
 import * as bitcoin from 'bitcoinjs-lib'
 import { Provider } from '../provider/provider'
 import { Signer } from '../signer/index'
-import { Marketplace } from 'marketplace'
-//import { NewMarketplace } from 'marketplace_new'
+import { NewMarketplace } from '../marketplace_new'
 
 const defaultProvider = {
   bitcoin: new Provider({
@@ -520,7 +519,7 @@ const getRuneByName = new Command('getRuneByName')
   })
 
 const apiProviderCall = new Command('api')
-  .description('Returns rune details based on name provided')
+  .description('Returns data based on api method invoked')
   .requiredOption(
     '-p, --provider <provider>',
     'provider to use to access the network.'
@@ -549,7 +548,6 @@ const apiProviderCall = new Command('api')
     }
   })
 
-  /*
 const marketPlaceBuy = new Command('buy')
 
   .description('Returns rune details based on name provided')
@@ -657,6 +655,7 @@ const runeCommand = new Command('rune')
 const providerCommand = new Command('provider')
   .description('Functions avaialble for all provider services')
   .addCommand(apiProviderCall)
+  .addCommand(ordProviderCall)
 
 // const marketPlaceCommand = new Command('marketplace')
 //   .description('Functions for marketplace')

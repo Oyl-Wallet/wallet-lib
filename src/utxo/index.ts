@@ -100,7 +100,6 @@ export const addressSpendableUtxos = async ({
       !hasRune?.output
     ) {
       const transactionDetails = await provider.esplora.getTxInfo(utxos[i].txid)
-
       const voutEntry = transactionDetails.vout.find(
         (v) => v.scriptpubkey_address === address
       )

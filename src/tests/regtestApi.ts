@@ -53,10 +53,10 @@ export const getRuneOutpointsRegtest = async (address: string) => {
       const txDetails = await oyl.ordRpc.getTxOutput(
         output
       )
-      if (txDetails.runes.length > 0) {
-        const runeName = txDetails.runes[0][0]
+      for (let i = 0; i < txDetails.runes.length; i++) {
+        const runeName = txDetails.runes[i][0]
         const { id } = await oyl.ordRpc.getRuneByName(runeName)
-        const runeAmount = txDetails.runes[0][1].amount
+        const runeAmount = txDetails.runes[i][1].amount
         const index = data.findIndex((rune) => rune.rune_name == runeName);
         if ( index != -1) { 
           // update balance
@@ -65,14 +65,14 @@ export const getRuneOutpointsRegtest = async (address: string) => {
           // create new record
           const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid)
           data.push({
-            pkscript: txInfo.vout[1].scriptpubkey,
+            pkscript: txInfo.vout[utxo.vout].scriptpubkey,
             wallet_addr: address,
             output,
             rune_ids: [id],
             balances: [runeAmount],
             rune_names: [runeName],
             spaced_rune_names: [runeName],
-            decimals: [txDetails.runes[0][1].divisibility]
+            decimals: [txDetails.runes[i][1].divisibility]
           })
         }
       }

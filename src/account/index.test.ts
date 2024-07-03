@@ -7,19 +7,15 @@ function isAccount(obj: any): obj is Account {
     typeof obj.taproot === 'object' &&
     typeof obj.taproot.pubkey === 'string' &&
     typeof obj.taproot.pubKeyXOnly === 'string' &&
-    typeof obj.taproot.privateKey === 'string' &&
     typeof obj.taproot.address === 'string' &&
     typeof obj.nativeSegwit === 'object' &&
     typeof obj.nativeSegwit.pubkey === 'string' &&
-    typeof obj.nativeSegwit.privateKey === 'string' &&
     typeof obj.nativeSegwit.address === 'string' &&
     typeof obj.nestedSegwit === 'object' &&
     typeof obj.nestedSegwit.pubkey === 'string' &&
-    typeof obj.nestedSegwit.privateKey === 'string' &&
     typeof obj.nestedSegwit.address === 'string' &&
     typeof obj.legacy === 'object' &&
     typeof obj.legacy.pubkey === 'string' &&
-    typeof obj.legacy.privateKey === 'string' &&
     typeof obj.legacy.address === 'string' &&
     typeof obj.spendStrategy === 'object' &&
     Array.isArray(obj.spendStrategy.addressOrder) &&
@@ -39,7 +35,14 @@ function isAccount(obj: any): obj is Account {
 
 describe('Account Tests', () => {
   it('Generate accurate Account object', () => {
-    expect(isAccount(mnemonicToAccount({}))).toBe(true)
+    expect(
+      isAccount(
+        mnemonicToAccount({
+          mnemonic:
+            'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+        })
+      )
+    ).toBe(true)
   })
 
   it('Generate 12 word mnemonic', () => {

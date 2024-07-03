@@ -69,6 +69,7 @@ The available namespaces list will grow as new protocols are implemented.
   - getRuneByName
 - provider
   - api
+  - ord
 - marketplace
   - buy
 
