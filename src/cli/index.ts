@@ -588,7 +588,7 @@ const marketPlaceBuy = new Command('buy')
     oyl marketplace buy -type BRC20 -tick ordi -feeRate 30 -p bitcoin
 
     please note the json format if you need to pass an object.
-  
+  */
   .action(async (options) => {
     const provider: Provider = defaultProvider[options.provider]
     const signer = new Signer(provider.network, {
@@ -623,7 +623,7 @@ const marketPlaceBuy = new Command('buy')
 
     console.log(signedTxs)
   })
-  */
+  
 
 const accountCommand = new Command('account')
   .description('Manage accounts')
@@ -655,7 +655,7 @@ const runeCommand = new Command('rune')
 const providerCommand = new Command('provider')
   .description('Functions avaialble for all provider services')
   .addCommand(apiProviderCall)
-  .addCommand(ordProviderCall)
+  //.addCommand(ordProviderCall)
 
 // const marketPlaceCommand = new Command('marketplace')
 //   .description('Functions for marketplace')
