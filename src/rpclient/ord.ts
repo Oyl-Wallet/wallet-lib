@@ -46,8 +46,8 @@ export class OrdRpc {
     return await this._call('ord_inscription', [number])
   }
 
-  async getInscriptions(numberToReturn: string, startingWith?: string) {
-    return await this._call('ord_inscriptions', [startingWith, numberToReturn])
+  async getInscriptions(startingNumber?: string) {
+    return await this._call('ord_inscriptions', [startingNumber ? startingNumber : '']);
   }
 
   async getInscriptionsByBlockHash(blockHash: string) {

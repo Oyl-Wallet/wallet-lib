@@ -5,7 +5,7 @@ export declare class OrdRpc {
     getInscriptionById(inscriptionId: string): Promise<any>;
     getInscriptionContent(inscriptionId: string): Promise<any>;
     getInscriptionByNumber(number: string): Promise<any>;
-    getInscriptions(numberToReturn: string, startingWith?: string): Promise<any>;
+    getInscriptions(startingNumber?: string): Promise<any>;
     getInscriptionsByBlockHash(blockHash: string): Promise<any>;
     getInscriptionsByBlockHeight(blockHash: string): Promise<any>;
     getInscriptionBySat(satNumber: string): Promise<any>;
