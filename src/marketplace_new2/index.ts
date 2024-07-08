@@ -1,5 +1,4 @@
 import {
-  Oyl,
   getAddressType,
   AddressType,
   getNetwork,
@@ -25,16 +24,15 @@ import {
 } from '@okxweb3/coin-bitcoin'
 import { signBip322Message } from './BIP322'
 import { OylTransactionError } from '../errors'
+import { Provider } from 'provider/provider'
+import { Account } from '@account/index'
 
-export class Marketplace {
-  private wallet: Oyl
+export class NewMarketplace {
+  private provider: Provider
   private receiveAddress: string
   private selectedSpendAddress: string | null
   private selectedSpendPubkey: string | null
-  private spendAddress: string
-  private spendPubKey: string
-  private altSpendAddress: string
-  private altSpendPubKey: string
+  private account: Account
   private signer: Signer
   public assetType: AssetType
   public feeRate: number
@@ -42,13 +40,10 @@ export class Marketplace {
   public addressesBound: boolean = false
 
   constructor(options: MarketplaceAccount) {
-    this.wallet = options.wallet
+    this.provider = options.provider
     this.receiveAddress = options.receiveAddress
-    this.spendAddress = options.spendAddress
+    this.account = options.account
     this.assetType = options.assetType
-    this.spendPubKey = options.spendPubKey
-    this.altSpendAddress = options.altSpendAddress
-    this.altSpendPubKey = options.altSpendPubKey
     this.signer = options.signer
     this.feeRate = options.feeRate
   }
@@ -70,23 +65,27 @@ export class Marketplace {
 
   async selectSpendAddress(offers: MarketplaceOffer[]) {
     const estimatedCost = await this.getOffersCostEstimate(offers)
-    if (await this.canAddressAffordOffers(this.spendAddress, estimatedCost)) {
-      this.selectedSpendAddress = this.spendAddress
-      this.selectedSpendPubkey = this.spendPubKey
-    } else if (
-      await this.canAddressAffordOffers(this.altSpendAddress, estimatedCost)
-    ) {
-      this.selectedSpendAddress = this.altSpendAddress
-      this.selectedSpendPubkey = this.altSpendPubKey
-    } else {
-      throw new OylTransactionError(
-        new Error(
-          'Not enough sats available to buy marketplace offers, need  ' +
-            estimatedCost +
-            ' sats'
-        ),
-        this.txIds
-      )
+    for (let i = 0; i < this.account.spendStrategy.addressOrder.length; i++) {
+      const address =
+        this.account[this.account.spendStrategy.addressOrder[i]].address
+      const pubkey =
+        this.account[this.account.spendStrategy.addressOrder[i]].pubkey
+
+      if (await this.canAddressAffordOffers(address, estimatedCost)) {
+        this.selectedSpendAddress = address
+        this.selectedSpendPubkey = pubkey
+        break
+      }
+      if (i === this.account.spendStrategy.addressOrder.length - 1) {
+        throw new OylTransactionError(
+          new Error(
+            'Not enough sats available to buy marketplace offers, need  ' +
+              estimatedCost +
+              ' sats'
+          ),
+          this.txIds
+        )
+      }
     }
   }
 
@@ -110,7 +109,7 @@ export class Marketplace {
         receiveAddress: this.receiveAddress,
         psbtBase64: order.psbtBase64,
         price: order.price,
-        wallet: this.wallet,
+        provider: this.provider,
       })
       const {
         psbtBase64: filledOutBase64,
@@ -120,12 +119,11 @@ export class Marketplace {
         remainingSats
       )
       const psbtPayload = await this.signMarketplacePsbt(filledOutBase64, true)
-      const result =
-        await this.wallet.sandshrewBtcClient.bitcoindRpc.finalizePSBT(
-          psbtPayload.signedPsbt
-        )
+      const result = await this.provider.sandshrew.bitcoindRpc.finalizePSBT(
+        psbtPayload.signedPsbt
+      )
       const txPayload =
-        await this.wallet.sandshrewBtcClient.bitcoindRpc.decodeRawTransaction(
+        await this.provider.sandshrew.bitcoindRpc.decodeRawTransaction(
           result.hex
         )
       const txId = txPayload.txid
@@ -167,10 +165,10 @@ export class Marketplace {
 
     await this.selectSpendAddress(offers)
     let externalSwap = false
-    const testnet = this.wallet.network == getNetwork('testnet')
+    const testnet = this.provider.network == getNetwork('testnet')
     for (const offer of offers) {
       if (offer.marketplace == 'omnisat') {
-        let newOffer = await this.wallet.apiClient.getOmnisatOfferPsbt({
+        let newOffer = await this.provider.api.getOmnisatOfferPsbt({
           offerId: offer.offerId,
           ticker: offer.ticker,
         })
@@ -189,7 +187,7 @@ export class Marketplace {
         externalSwap = true
         await timeout(10000)
       } else if (offer.marketplace == 'okx' && !testnet) {
-        const offerPsbt = await this.wallet.apiClient.getOkxOfferPsbt({
+        const offerPsbt = await this.provider.api.getOkxOfferPsbt({
           offerId: offer.offerId,
         })
         const signedPsbt = await this.createOkxSignedPsbt(
@@ -205,7 +203,7 @@ export class Marketplace {
           buyerPsbt: signedPsbt,
           orderId: offer.offerId,
         }
-        const tx = await this.wallet.apiClient.submitOkxBid(payload)
+        const tx = await this.provider.api.submitOkxBid(payload)
         let txId = tx?.data
         if (txId != null) {
           this.txIds.push(txId)
@@ -230,13 +228,10 @@ export class Marketplace {
   async getAssetPsbtPath(payload: SwapPayload) {
     switch (this.assetType) {
       case AssetType.BRC20:
-        return await this.wallet.apiClient.initSwapBid(payload)
+        return await this.provider.api.initSwapBid(payload)
         break
       case AssetType.RUNES:
-        return await this.wallet.apiClient.initRuneSwapBid(payload)
-        break
-      case AssetType.COLLECTIBLE:
-        return await this.wallet.apiClient.initCollectionSwapBid(payload)
+        return await this.provider.api.initRuneSwapBid(payload)
         break
     }
   }
@@ -244,14 +239,11 @@ export class Marketplace {
   async getSubmitAssetPsbtPath(payload: SignedBid) {
     switch (this.assetType) {
       case AssetType.BRC20:
-        return await this.wallet.apiClient.submitSignedBid(payload)
+        return await this.provider.api.submitSignedBid(payload)
         break
       case AssetType.RUNES:
         console.log('payload to submit', payload)
-        return await this.wallet.apiClient.submitSignedRuneBid(payload)
-        break
-      case AssetType.COLLECTIBLE:
-        return await this.wallet.apiClient.submitSignedCollectionBid(payload)
+        return await this.provider.api.submitSignedRuneBid(payload)
         break
     }
   }
@@ -313,7 +305,7 @@ export class Marketplace {
       receiveAddress: this.receiveAddress,
       psbtBase64: offers[0].psbtBase64,
       price: offers[0].price,
-      wallet: this.wallet,
+      provider: this.provider,
     })
 
     const preparedWallet = await this.prepareAddress(marketPlaceBuy)
@@ -327,26 +319,19 @@ export class Marketplace {
 
     const { psbtBase64, remainder } = await marketPlaceBuy.psbtBuilder()
     const psbtPayload = await this.signMarketplacePsbt(psbtBase64, true)
-    const result =
-      await this.wallet.sandshrewBtcClient.bitcoindRpc.finalizePSBT(
-        psbtPayload.signedPsbt
-      )
+    const result = await this.provider.sandshrew.bitcoindRpc.finalizePSBT(
+      psbtPayload.signedPsbt
+    )
     const [broadcast] =
-      await this.wallet.sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([
-        result.hex,
-      ])
+      await this.provider.sandshrew.bitcoindRpc.testMemPoolAccept([result.hex])
 
     if (!broadcast.allowed) {
       console.log('in buyMarketPlaceOffers', broadcast)
       throw new OylTransactionError(result['reject-reason'], this.txIds)
     }
-    await this.wallet.sandshrewBtcClient.bitcoindRpc.sendRawTransaction(
-      result.hex
-    )
+    await this.provider.sandshrew.bitcoindRpc.sendRawTransaction(result.hex)
     const txPayload =
-      await this.wallet.sandshrewBtcClient.bitcoindRpc.decodeRawTransaction(
-        result.hex
-      )
+      await this.provider.sandshrew.bitcoindRpc.decodeRawTransaction(result.hex)
     const txId = txPayload.txid
     let remainingSats = remainder
     const multipleBuys = await this.processMultipleBuys(
@@ -364,7 +349,7 @@ export class Marketplace {
     for (let i = 0; i < multipleBuys.psbtHexs.length; i++) {
       await timeout(30000)
       const [broadcast] =
-        await this.wallet.sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([
+        await this.provider.sandshrew.bitcoindRpc.testMemPoolAccept([
           multipleBuys.psbtHexs[i],
         ])
       if (!broadcast.allowed) {
@@ -373,7 +358,7 @@ export class Marketplace {
         console.log(result['reject-reason'])
         throw new OylTransactionError(result['reject-reason'], this.txIds)
       }
-      await this.wallet.sandshrewBtcClient.bitcoindRpc.sendRawTransaction(
+      await this.provider.sandshrew.bitcoindRpc.sendRawTransaction(
         multipleBuys.psbtHexs[i]
       )
       this.txIds.push(multipleBuys.txIds[i])
@@ -391,12 +376,11 @@ export class Marketplace {
       if (!prepared) {
         const { psbtBase64 } = await marketPlaceBuy.prepareWallet()
         const psbtPayload = await this.signMarketplacePsbt(psbtBase64, true)
-        const result =
-          await this.wallet.sandshrewBtcClient.bitcoindRpc.finalizePSBT(
-            psbtPayload.signedPsbt
-          )
+        const result = await this.provider.sandshrew.bitcoindRpc.finalizePSBT(
+          psbtPayload.signedPsbt
+        )
         const [broadcast] =
-          await this.wallet.sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([
+          await this.provider.sandshrew.bitcoindRpc.testMemPoolAccept([
             result.hex,
           ])
 
@@ -404,11 +388,9 @@ export class Marketplace {
           console.log('in prepareAddress', broadcast)
           throw new OylTransactionError(result['reject-reason'], this.txIds)
         }
-        await this.wallet.sandshrewBtcClient.bitcoindRpc.sendRawTransaction(
-          result.hex
-        )
+        await this.provider.sandshrew.bitcoindRpc.sendRawTransaction(result.hex)
         const txPayload =
-          await this.wallet.sandshrewBtcClient.bitcoindRpc.decodeRawTransaction(
+          await this.provider.sandshrew.bitcoindRpc.decodeRawTransaction(
             result.hex
           )
         const txId = txPayload.txid
@@ -437,7 +419,7 @@ export class Marketplace {
 
   async externalSign(options) {
     const psbt = bitcoin.Psbt.fromHex(options.psbt, {
-      network: this.wallet.network,
+      network: this.provider.network,
     })
     console.log('external sign options', options)
     const psbtPayload = await this.signMarketplacePsbt(psbt.toBase64(), false)
@@ -450,7 +432,7 @@ export class Marketplace {
       '=========== Getting all confirmed/unconfirmed utxos for ' +
         address +
         ' ============'
-      return await this.wallet.esploraRpc
+      return await this.provider.esplora
         .getAddressUtxo(address)
         .then((unspents) => unspents?.filter((utxo) => utxo.value > 546))
     } catch (e: any) {
@@ -481,7 +463,7 @@ export class Marketplace {
         '=========== Getting Collectibles for address ' + address + '========'
       )
       const retrievedIxs = (
-        await this.wallet.apiClient.getCollectiblesByAddress(address)
+        await this.provider.api.getCollectiblesByAddress(address)
       ).data
       console.log('=========== Collectibles:', retrievedIxs.length)
       console.log('=========== Gotten Collectibles, splitting utxos ========')
@@ -585,7 +567,7 @@ export class Marketplace {
       receiveAddress: this.receiveAddress,
       psbtBase64: '',
       price: 0,
-      wallet: this.wallet,
+      provider: this.provider,
     })
     const preparedWallet = await this.prepareAddress(marketPlaceBuy)
     await timeout(30000)
@@ -622,7 +604,7 @@ export class Marketplace {
   }
 
   async getSignatureForBind() {
-    const testnet = this.wallet.network == getNetwork('testnet')
+    const testnet = this.provider.network == getNetwork('testnet')
     const message = `Please confirm that\nPayment Address: ${this.selectedSpendAddress}\nOrdinals Address: ${this.receiveAddress}`
     if (getAddressType(this.receiveAddress) == AddressType.P2WPKH) {
       const keyPair = this.signer.segwitKeyPair
