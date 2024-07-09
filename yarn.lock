@@ -1310,10 +1310,10 @@ bitcoinjs-message@^2.2.0:
     secp256k1 "^3.0.1"
     varuint-bitcoin "^1.0.1"
 
-bitcore-lib@^10.0.28, bitcore-lib@^10.0.5:
-  version "10.0.28"
-  resolved "https://registry.npmjs.org/bitcore-lib/-/bitcore-lib-10.0.28.tgz#f46810324df1021f194dcdc1411c2d1a83b9be10"
-  integrity sha512-uOWHpWbUxEj411p+tp6DCb9NfZdsCAHl6Z/rs96mquQMsef29fOqWUyk4Bl7yLf+KwzU5ZKy0HIPnjGFlmpXpg==
+bitcore-lib@^10.0.36, bitcore-lib@^10.0.5:
+  version "10.0.36"
+  resolved "https://registry.npmjs.org/bitcore-lib/-/bitcore-lib-10.0.36.tgz#2a88c8e0e63d4fc08e870fcc2d6493b931cfd630"
+  integrity sha512-yGSiEubYzabCYZ5/qu9ji5P/kfLkXpBgm1lAblVO2ESuD9ep7aaG6TRd3K5ips4pWgW/uRQpbiErT6pw2Ke/AQ==
   dependencies:
     bech32 "=2.0.0"
     bip-schnorr "=0.6.4"
@@ -1325,11 +1325,11 @@ bitcore-lib@^10.0.28, bitcore-lib@^10.0.5:
     lodash "^4.17.20"
 
 bitcore-mnemonic@^10.0.5:
-  version "10.0.28"
-  resolved "https://registry.npmjs.org/bitcore-mnemonic/-/bitcore-mnemonic-10.0.28.tgz#574310ba080cfc2fb29761f3580700deae7a15e0"
-  integrity sha512-Tu/RVcoRJyOeuafrXW6BD/3kkZLMwjxMGUcfNL2C9yKFAyXl6m5eNdy3VWDycbyRsHc+JnX/HRVVlhBuj1OSOw==
+  version "10.0.36"
+  resolved "https://registry.npmjs.org/bitcore-mnemonic/-/bitcore-mnemonic-10.0.36.tgz#da871e749f3f33b69c570ae3fe5e214ffba3398c"
+  integrity sha512-7paCdPrcB8TsfryQxiDU6FB79H4DDmhlQYMiU/EcflTAJezz5RDpy9qMv3p/FX1wfUd4jRk4UIrWzQAnv0UM8A==
   dependencies:
-    bitcore-lib "^10.0.28"
+    bitcore-lib "^10.0.36"
     unorm "^1.4.1"
 
 bn.js@4.12.0, bn.js@^4.11.8, bn.js@^4.11.9:

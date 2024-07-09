@@ -1,5 +1,5 @@
 import { MnemonicToAccountOptions } from '../account'
-import { Provider } from '../provider/provider'
+import { Provider, ProviderConstructorArgs } from '../provider'
 import { Network, NetworkOptions } from './interface'
 import * as bitcoin from 'bitcoinjs-lib'
 import * as dotenv from 'dotenv'
@@ -11,12 +11,13 @@ export const maximumScriptBytes = 520
 
 export const MAXIMUM_FEE = 5000000
 
-export const regtestProvider = new Provider({
+export const regtestProviderConstructorArgs: ProviderConstructorArgs = {
   url: 'http://localhost:3000',
   projectId: 'regtest',
   network: bitcoin.networks.regtest,
   networkType: 'mainnet',
-})
+  apiUrl: 'https://mainnet-api.oyl.gg'
+}
 
 export const regtestOpts: MnemonicToAccountOptions = {
   network: bitcoin.networks.regtest,
@@ -67,7 +68,7 @@ export const defaultNetworkOptions: Record<Network, NetworkOptions> = {
     version: 'v1',
     projectId: 'regtest',
     network: 'regtest',
-    apiUrl: 'https://api.oyl.gg',
+    apiUrl: 'https://mainnet-api.oyl.gg',
   },
   signet: {
     baseUrl: 'https://signet.sandshrew.io',

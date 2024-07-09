@@ -40,7 +40,7 @@ import {
   mainnetMnemonic,
   regtestMnemonic,
   regtestOpts,
-  regtestProvider,
+  regtestProviderConstructorArgs,
 } from '../shared/constants'
 import * as collectible from '../collectible'
 import { commit, reveal, transfer, transferEstimate } from '../brc20'
@@ -495,6 +495,7 @@ export async function runCLI() {
   const networkConfig = config[network!]
 
   const { to, amount, feeRate, ticker, psbtBase64, price } = options
+  const regtestProvider = new Provider(regtestProviderConstructorArgs)
 
   const signer: Signer = new Signer(bitcoin.networks.regtest, {
     segwitPrivateKey: networkConfig.segwitPrivateKey,

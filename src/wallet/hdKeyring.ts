@@ -1,3 +1,5 @@
+if (global._bitcore) delete global._bitcore
+
 import * as bitcoin from 'bitcoinjs-lib'
 import { ECPairInterface } from 'ecpair'
 import bitcore from 'bitcore-lib'
