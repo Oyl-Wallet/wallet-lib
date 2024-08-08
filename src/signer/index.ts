@@ -232,7 +232,7 @@ export class Signer {
     }
 
     const signedPsbt = unSignedPsbt.toBase64()
-    const signedHexPsbt = unSignedPsbt.toHex()
+    const signedHexPsbt = unSignedPsbt.extractTransaction().toHex()
 
     return { signedPsbt, signedHexPsbt }
   }
