@@ -131,7 +131,7 @@ export const createPsbt = async ({
       network: provider.network,
     })
 
-    return { psbt: updatedPsbt.toBase64(), psbtHex: updatedPsbt.toHex() ,fee: finalFee }
+    return { psbt: updatedPsbt.toBase64() ,fee: finalFee }
   } catch (error) {
     throw new OylTransactionError(error)
   }

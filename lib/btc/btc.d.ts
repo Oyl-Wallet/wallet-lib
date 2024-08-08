@@ -10,7 +10,6 @@ export declare const createPsbt: ({ toAddress, amount, feeRate, account, provide
     fee?: number;
 }) => Promise<{
     psbt: string;
-    psbtHex: string;
     fee: number;
 }>;
 export declare const send: ({ toAddress, amount, feeRate, account, provider, signer, }: {
