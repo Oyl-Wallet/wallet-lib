@@ -27,8 +27,5 @@ export declare class Engine {
      * for building the
      */
     prepareAddress(marketPlaceBuy: BuildMarketplaceTransaction): Promise<Boolean>;
-    dummyUtxosPsbt(): Promise<{
-        psbtHex: string;
-        psbtBase64: string;
-    }>;
+    dummyUtxosPsbt(): Promise<void>;
 }

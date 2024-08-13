@@ -1,9 +1,8 @@
 import { FormattedUtxo, addressSpendableUtxos } from "@utxo/utxo";
 import { Provider } from "provider";
-import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, UtxosToCoverAmount, marketplaceName } from "shared/interface";
+import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount, marketplaceName } from "shared/interface";
 import { assertHex, getOutputFormat, getTxSizeByAddressType } from "shared/utils";
 import * as bitcoin from 'bitcoinjs-lib'
-import { _0n } from "@cmdcode/crypto-utils/dist/const";
 
 
 export const maxTxSizeForOffers: number = 482
@@ -160,13 +159,11 @@ export function psbtTxAddressTypes({
 export function estimatePsbtFee({
     psbt,
     network,
-    witness = [],
-    feeRate
+    witness = []
 }: {
     psbt: bitcoin.Psbt,
     network: bitcoin.Network,
     witness?: Buffer[],
-    feeRate: number
 }): number {
     const { inputAddressTypes, outputAddressTypes } = psbtTxAddressTypes({ psbt, network });
     const witnessHeaderSize = 2
@@ -209,5 +206,80 @@ export function estimatePsbtFee({
     const sum = baseTotal + witnessTotal
     const weight = (baseTotal * 3) + sum
 
-    return Math.ceil(weight / 4) * feeRate;
+    return Math.ceil(weight / 4);
 }
+
+export async function buildPsbtWithFee(
+    {
+    inputTemplate = [], 
+    outputTemplate = [],
+    retrievedUtxos = [],
+    amountNeeded,
+    spendAddress,
+    spendPubKey,
+    amountRetrieved,
+    spendAmount,
+    addressType,
+    provider,
+    network
+    }: PsbtBuilder
+    ) {
+    const psbtTx = new bitcoin.Psbt({ network });
+    if (inputTemplate.length === 0 || outputTemplate.length === 0) {
+        throw new Error('Cant create a psbt with 0 inputs & outputs')
+    } 
+
+    inputTemplate.forEach(input => psbtTx.addInput(input));
+    outputTemplate.forEach(output => psbtTx.addOutput(output));
+
+    const finalTxSize = estimatePsbtFee({psbt: psbtTx, network});
+    const finalFee = parseInt((finalTxSize * this.feeRate).toFixed(0));
+    
+    let remainder = amountRetrieved - (spendAmount + finalFee);
+    let newAmountNeeded = spendAmount + finalFee;
+
+    if (remainder < 0) { //consider a better condition
+        const additionalUtxos = await getUTXOsToCoverAmount({
+            address: this.spendAddress,
+            amountNeeded: newAmountNeeded - amountRetrieved,
+            excludedUtxos: retrievedUtxos,
+            provider
+        });
+
+        if (additionalUtxos.length > 0) {
+            // Merge new UTXOs with existing ones and create new templates for recursion
+             retrievedUtxos = retrievedUtxos.concat(additionalUtxos);
+            additionalUtxos.forEach((utxo) => {
+                const input = addInputConditionally({
+                    hash: utxo.txId,
+                    index: utxo.outputIndex,
+                    witnessUtxo: {
+                        value: utxo.satoshis,
+                        script: Buffer.from(utxo.scriptPk, 'hex'),
+                    },
+                }, addressType, spendPubKey)
+                inputTemplate.push(input)
+            })
+
+            return await buildPsbtWithFee({amountNeeded, spendAddress, spendAmount, network, spendPubKey, amountRetrieved, addressType, provider, retrievedUtxos, inputTemplate, outputTemplate});
+        } else {
+                throw new Error('Insufficient funds: cannot cover transaction fee with available UTXOs')
+        }
+    } else {// if  remainder is greater than dust
+        // Update the last output to reflect the correct remainder
+        const lastIndex = outputTemplate.length - 1
+        outputTemplate[lastIndex] = {
+            address: spendAddress,
+            value: remainder,
+        }
+        const finalPsbtTx = new bitcoin.Psbt({ network });
+        inputTemplate.forEach(input => psbtTx.addInput(input));
+        outputTemplate.forEach(output => psbtTx.addOutput(output));
+    }
+
+    return {
+        psbtHex: psbtTx.toHex(),
+        psbtBase64: psbtTx.toBase64()
+    };
+}
+    

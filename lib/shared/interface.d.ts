@@ -247,6 +247,19 @@ export interface FeeEstimatorOptions {
     psbt?: Psbt;
     witness?: Buffer[];
 }
+export interface PsbtBuilder {
+    provider: Provider;
+    retrievedUtxos?: FormattedUtxo[];
+    inputTemplate: ConditionalInput[];
+    outputTemplate: any[];
+    amountRetrieved: number;
+    amountNeeded: number;
+    spendAddress: string;
+    spendPubKey: string;
+    spendAmount: number;
+    network: bitcoin.Network;
+    addressType: AddressType;
+}
 export interface MarketplaceBuy {
     address: string;
     pubKey: string;

@@ -14,7 +14,7 @@ import { Signer } from '../signer'
 import { OylTransactionError } from '../errors'
 import { Provider } from 'provider/provider'
 import { Account } from '@account/account'
-import { DUMMY_UTXO_SATS, ESTIMATE_TX_SIZE, addInputConditionally, calculateAmountGathered, canAddressAffordBid, getAllUTXOsWorthASpecificValue, getBidCostEstimate, getUTXOsToCoverAmount, sanitizeFeeRate } from './helpers'
+import { DUMMY_UTXO_SATS, ESTIMATE_TX_SIZE, addInputConditionally, calculateAmountGathered, canAddressAffordBid, estimatePsbtFee, getAllUTXOsWorthASpecificValue, getBidCostEstimate, getUTXOsToCoverAmount, sanitizeFeeRate } from './helpers'
 import { addressSpendableUtxos } from '@utxo/utxo'
 
 
@@ -163,7 +163,7 @@ export class Engine {
         if (retrievedUtxos.length === 0) {
             throw new OylTransactionError(
                 new Error(
-                    'An error occured while preparing address for marketplace buy'
+                    'No utxos available'
                 ),
                 this.txIds
             )
@@ -196,10 +196,7 @@ export class Engine {
             value: remainder,
         })
 
-        return {
-            psbtHex: dummyUtxoTx.toHex(),
-            psbtBase64: dummyUtxoTx.toBase64()
-        }
+     
     }
 
 
