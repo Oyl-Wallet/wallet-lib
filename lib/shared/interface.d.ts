@@ -5,6 +5,7 @@ import { Oyl } from '../oylib';
 import { Signer } from '../signer';
 import { Provider } from '../provider';
 import { Account } from '../account';
+import { FormattedUtxo } from '@utxo/utxo';
 export interface InscriptionResponse {
     address: string;
     inscriptions?: string;
@@ -188,6 +189,13 @@ export interface MarketplaceAccount {
     assetType: AssetType;
     receiveAddress: string;
     feeRate: number;
+}
+export interface UtxosToCoverAmount {
+    address: string;
+    amountNeeded: number;
+    provider: Provider;
+    excludedUtxos?: FormattedUtxo[];
+    insistConfirmedUtxos?: boolean;
 }
 export interface MarketplaceOffers {
     offerId: string;
