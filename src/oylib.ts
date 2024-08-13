@@ -33,7 +33,6 @@ import {
   AddressType,
   IBlockchainInfoUTXO,
   Network,
-  Providers,
   RecoverAccountOptions,
   RuneUtxo,
   TickerDetails,

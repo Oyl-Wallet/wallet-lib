@@ -95,6 +95,10 @@ export interface ConditionalInput {
     tapInternalKey?: Buffer;
     segwitInternalKey?: Buffer;
 }
+export interface SelectedUtxoOffers {
+    offer: MarketplaceOffer;
+    utxo: FormattedUtxo[];
+}
 export interface TxOutput {
     address: string;
     value: number;
@@ -145,6 +149,16 @@ export declare enum AssetType {
     BRC20 = 0,
     COLLECTIBLE = 1,
     RUNES = 2
+}
+export declare enum Marketplaces {
+    UNISAT = 0,
+    OKX = 1
+}
+export interface BidAffordabilityCheck {
+    address: string;
+    estimatedCost: number;
+    offers: MarketplaceOffer[];
+    provider: Provider;
 }
 export interface ExternalSwap {
     auctionId: string;
@@ -207,28 +221,11 @@ export interface UtxosToCoverAmount {
     excludedUtxos?: FormattedUtxo[];
     insistConfirmedUtxos?: boolean;
 }
-export interface MarketplaceOffers {
-    offerId: string;
-    marketplace: string;
-    ticker: string;
-}
-export interface ProviderOptions {
-    network: String;
-    host: String;
-    port: Number;
-    provider?: Providers;
-    auth?: String;
-}
 export interface RecoverAccountOptions {
     mnemonic?: string;
     activeIndexes?: number[];
     customPath?: 'xverse' | 'leather' | 'unisat' | 'testnet';
     network: bitcoin.Network;
-}
-export declare enum Providers {
-    bcoin = 0,
-    oyl = 1,
-    electrum = 2
 }
 export interface oylAccounts {
     taproot: {
@@ -319,6 +316,10 @@ export declare const internalAddressTypeToName: {
     readonly 1: "taproot";
     readonly 2: "nested-segwit";
     readonly 3: "segwit";
+};
+export declare const marketplaceName: {
+    unisat: Marketplaces;
+    okx: Marketplaces;
 };
 export declare const addressNameToType: {
     readonly legacy: "p2pkh";

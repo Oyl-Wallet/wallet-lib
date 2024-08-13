@@ -18,7 +18,7 @@ import * as bitcoin from 'bitcoinjs-lib'
 import { Provider } from '../provider/provider'
 import { Signer } from '../signer/index'
 import { Trade } from '../trade'
-import { AssetType, MarketplaceOffers } from '../shared/interface'
+import { AssetType, MarketplaceOffer } from '../shared/interface'
 import { OylTransactionError } from '../errors'
 
 const defaultProvider = {
@@ -674,7 +674,7 @@ const marketPlaceBuy = new Command('buy')
         },
       },
     })
-    let quotes: MarketplaceOffers[]
+    let quotes: MarketplaceOffer[]
     switch (options.assetType) {
       case 'BRC20':
         options.assetType = AssetType.BRC20
