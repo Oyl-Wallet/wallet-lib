@@ -1,7 +1,7 @@
 /// <reference types="node" />
-import { FormattedUtxo } from "@utxo/utxo";
+import { FormattedUtxo } from '../utxo/utxo';
 import { Provider } from "provider";
-import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount } from "shared/interface";
+import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount } from "../shared/interface";
 import * as bitcoin from 'bitcoinjs-lib';
 export declare const maxTxSizeForOffers: number;
 export declare const CONFIRMED_UTXO_ENFORCED_MARKETPLACES: Marketplaces[];

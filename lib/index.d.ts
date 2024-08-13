@@ -7,6 +7,7 @@ export * from './transactions';
 export * from './errors';
 export * from './account';
 export * from './trade';
+export * from './swaps';
 export * from './signer';
 export * from './provider';
 export * as rune from './rune';

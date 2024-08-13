@@ -1,7 +1,7 @@
-import { FormattedUtxo, addressSpendableUtxos } from "@utxo/utxo";
+import { FormattedUtxo, addressSpendableUtxos } from '../utxo/utxo';
 import { Provider } from "provider";
-import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount, marketplaceName } from "shared/interface";
-import { assertHex, getOutputFormat, getTxSizeByAddressType } from "shared/utils";
+import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount, marketplaceName } from "../shared/interface";
+import { assertHex, getOutputFormat, getTxSizeByAddressType } from "../shared/utils";
 import * as bitcoin from 'bitcoinjs-lib'
 
 
@@ -29,7 +29,7 @@ export async function getUTXOsToCoverAmount({
                 // Check if the UTXO should be excluded
                 continue
             }
-            if (insistConfirmedUtxos && utxo.confirmations != 0) {
+            if (insistConfirmedUtxos && utxo.confirmations == 0) {
                 continue
             }
             const currentUTXO = utxo;
@@ -39,7 +39,7 @@ export async function getUTXOsToCoverAmount({
                 return result
             }
         }
-        return result;
+        return [];
     } catch (err) {
         throw new Error(err);
     }
@@ -98,6 +98,7 @@ export async function canAddressAffordBid({ address, estimatedCost, offers, prov
         excludedUtxos,
         insistConfirmedUtxos
     })
+    console.log(retrievedUtxos)
     return retrievedUtxos.length > 0
 }
 

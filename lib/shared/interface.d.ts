@@ -182,14 +182,6 @@ export type OrdCollectibleData = {
     satpoint: string;
     timestamp: number;
 };
-export interface SwapPayload {
-    address: string;
-    auctionId: string;
-    bidPrice: number;
-    pubKey: string;
-    receiveAddress: string;
-    feerate: number;
-}
 export interface OkxBid {
     ticker?: string;
     amount?: number;
@@ -317,6 +309,14 @@ export interface SignedBid {
     psbtBid: string;
     auctionId: string;
     bidId: string;
+}
+export interface SwapPayload {
+    address: string;
+    auctionId: string;
+    bidPrice: number;
+    pubKey: string;
+    receiveAddress: string;
+    feerate: number;
 }
 export declare const addressTypeToName: {
     readonly p2pkh: "legacy";
