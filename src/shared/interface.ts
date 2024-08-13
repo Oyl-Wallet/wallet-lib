@@ -269,7 +269,7 @@ export interface oylAccounts {
 
 export interface FeeEstimatorOptions {
   feeRate: number
-  network: Network
+  network: bitcoin.Network
   psbt?: Psbt
   witness?: Buffer[]
 }

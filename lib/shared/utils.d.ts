@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import * as bitcoin from 'bitcoinjs-lib';
-import { BitcoinPaymentType, IBlockchainInfoUTXO, Network, RuneUtxo, ToSignInput, TxInput, UnspentOutput } from './interface';
+import { AddressType, IBlockchainInfoUTXO, Network, RuneUtxo, ToSignInput, TxInput, UnspentOutput } from './interface';
 import { Utxo } from '../txbuilder/buildOrdTx';
 import { SandshrewBitcoinClient } from '../rpclient/sandshrew';
 import { EsploraRpc } from '../rpclient/esplora';
@@ -47,7 +47,7 @@ export declare const inscriptionSats = 546;
 export declare const ECPair: import("ecpair").ECPairAPI;
 export declare const assertHex: (pubKey: Buffer) => Buffer;
 export declare function getNetwork(value: Network | 'main' | 'mainnet' | 'regtest' | 'testnet' | 'signet'): bitcoin.networks.Network;
-export declare function checkPaymentType(payment: bitcoin.PaymentCreator, network: Network): (script: Buffer) => false | bitcoin.payments.Payment;
+export declare function checkPaymentType(payment: bitcoin.PaymentCreator, network: bitcoin.networks.Network): (script: Buffer) => false | bitcoin.payments.Payment;
 export declare function getFee({ provider, psbt, feeRate, }: {
     provider: Provider;
     psbt: string;
@@ -109,11 +109,15 @@ export declare function getOutputValueByVOutIndex({ txId, vOut, esploraRpc, }: {
 } | null>;
 export declare function calculateTaprootTxSize(taprootInputCount: number, nonTaprootInputCount: number, outputCount: number): number;
 export declare function getRawTxnHashFromTxnId(txnId: string): Promise<any>;
-export declare const isP2PKH: (script: Buffer, network: Network) => BitcoinPaymentType;
-export declare const isP2WPKH: (script: Buffer, network: Network) => BitcoinPaymentType;
-export declare const isP2WSHScript: (script: Buffer, network: Network) => BitcoinPaymentType;
-export declare const isP2SHScript: (script: Buffer, network: Network) => BitcoinPaymentType;
-export declare const isP2TR: (script: Buffer, network: Network) => BitcoinPaymentType;
+export declare const nativeSegwitFormat: (script: Buffer, network: bitcoin.networks.Network) => {
+    data: boolean | bitcoin.payments.Payment;
+};
+export declare const nestedSegwitFormat: (script: Buffer, network: bitcoin.networks.Network) => {
+    data: boolean | bitcoin.payments.Payment;
+};
+export declare const taprootFormat: (script: Buffer, network: bitcoin.networks.Network) => {
+    data: boolean | bitcoin.payments.Payment;
+};
 export declare const sendCollectible: ({ inscriptionId, inputAddress, outputAddress, taprootPublicKey, segwitPublicKey, segwitAddress, isDry, segwitSigner, taprootSigner, payFeesWithSegwit, feeRate, network, taprootUtxos, segwitUtxos, metaOutputValue, sandshrewBtcClient, }: {
     inscriptionId: string;
     inputAddress: string;
@@ -143,6 +147,13 @@ export declare const filterUtxos: ({ utxos }: {
     utxos: any[];
 }) => Promise<any>;
 export declare const isValidJSON: (str: string) => boolean;
+export declare function getOutputFormat(script: Buffer, network: bitcoin.networks.Network): AddressType.P2TR | AddressType.P2SH_P2WPKH | AddressType.P2WPKH;
+export declare function getTxSizeByAddressType(addressType: AddressType): {
+    input: number;
+    output: number;
+    txHeader: number;
+    witness: number;
+};
 export declare const encodeVarint: (bigIntValue: any) => {
     varint: Buffer;
 };

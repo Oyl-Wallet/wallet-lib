@@ -16,7 +16,6 @@ import { maximumScriptBytes } from './constants'
 import axios from 'axios'
 import {
   addInscriptionUtxo,
-  findUtxosToCoverAmount,
   getUtxosForFees,
   Utxo,
 } from '../txbuilder/buildOrdTx'
@@ -24,7 +23,6 @@ import { isTaprootInput, toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
 import { SandshrewBitcoinClient } from '../rpclient/sandshrew'
 import { EsploraRpc } from '../rpclient/esplora'
 import { Provider } from '../provider/provider'
-import { OylTransactionError } from '../errors'
 
 bitcoin.initEccLib(ecc)
 
@@ -93,11 +91,11 @@ export function getNetwork(
 
 export function checkPaymentType(
   payment: bitcoin.PaymentCreator,
-  network: Network
+  network: bitcoin.networks.Network
 ) {
   return (script: Buffer) => {
     try {
-      return payment({ output: script, network: getNetwork(network) })
+      return payment({ output: script, network: network })
     } catch (error) {
       return false
     }
@@ -485,9 +483,9 @@ export const createRuneSendScript = ({
   sendOutputIndex?: number
   pointer: number
 }) => {
-    if (divisibility === 0) {
-      amount = Math.floor(amount)
-    }
+  if (divisibility === 0) {
+    amount = Math.floor(amount)
+  }
   const pointerFlag = encodeVarint(BigInt(22)).varint
   const pointerVarint = encodeVarint(BigInt(pointer)).varint
   const bodyFlag = encodeVarint(BigInt(0)).varint
@@ -726,54 +724,33 @@ export async function getRawTxnHashFromTxnId(txnId: string) {
   return res.data
 }
 
-export const isP2PKH = (
+
+export const nativeSegwitFormat = (
   script: Buffer,
-  network: Network
-): BitcoinPaymentType => {
-  const p2pkh = checkPaymentType(bitcoin.payments.p2pkh, network)(script)
-  return {
-    type: 'p2pkh',
-    payload: p2pkh,
-  }
-}
-export const isP2WPKH = (
-  script: Buffer,
-  network: Network
-): BitcoinPaymentType => {
+  network: bitcoin.networks.Network
+) => {
   const p2wpkh = checkPaymentType(bitcoin.payments.p2wpkh, network)(script)
   return {
-    type: 'p2wpkh',
-    payload: p2wpkh,
+    data: p2wpkh,
   }
 }
-export const isP2WSHScript = (
+
+export const nestedSegwitFormat = (
   script: Buffer,
-  network: Network
-): BitcoinPaymentType => {
-  const p2wsh = checkPaymentType(bitcoin.payments.p2wsh, network)(script)
-  return {
-    type: 'p2sh',
-    payload: p2wsh,
-  }
-}
-export const isP2SHScript = (
-  script: Buffer,
-  network: Network
-): BitcoinPaymentType => {
+  network: bitcoin.networks.Network
+) => {
   const p2sh = checkPaymentType(bitcoin.payments.p2sh, network)(script)
   return {
-    type: 'p2sh',
-    payload: p2sh,
+    data: p2sh,
   }
 }
-export const isP2TR = (
+export const taprootFormat = (
   script: Buffer,
-  network: Network
-): BitcoinPaymentType => {
+  network: bitcoin.networks.Network
+) => {
   const p2tr = checkPaymentType(bitcoin.payments.p2tr, network)(script)
   return {
-    type: 'p2tr',
-    payload: p2tr,
+    data: p2tr,
   }
 }
 
@@ -948,6 +925,42 @@ export const isValidJSON = (str: string) => {
     return true
   } catch (e) {
     return false
+  }
+}
+
+export function getOutputFormat(script: Buffer, network: bitcoin.networks.Network) {
+
+  const p2sh = nestedSegwitFormat(script, network)
+  if (p2sh.data) {
+    return AddressType.P2SH_P2WPKH
+  }
+
+  const p2wpkh = nativeSegwitFormat(script, network)
+  if (p2wpkh.data) {
+    return AddressType.P2WPKH
+  }
+
+
+  const p2tr = taprootFormat(script, network)
+  if (p2tr.data) {
+    return AddressType.P2TR
+  }
+
+}
+
+export function getTxSizeByAddressType(addressType: AddressType) {
+  switch (addressType) {
+    case AddressType.P2TR:
+      return { input: 42, output: 43, txHeader: 10.5, witness: 66 }
+
+    case AddressType.P2WPKH:
+      return { input: 42, output: 43, txHeader: 10.5, witness: 112.5 }
+
+    case AddressType.P2SH_P2WPKH:
+      return { input: 64, output: 32, txHeader: 10, witness: 105 }
+
+    default:
+      throw new Error("Invalid address type")
   }
 }
 
