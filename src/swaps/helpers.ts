@@ -1,5 +1,6 @@
 import { FormattedUtxo, addressSpendableUtxos } from "@utxo/utxo";
-import { UtxosToCoverAmount } from "shared/interface";
+import { AddressType, ConditionalInput, UtxosToCoverAmount } from "shared/interface";
+import { assertHex } from "shared/utils";
 
 export async function getUTXOsToCoverAmount({
     address,
@@ -35,8 +36,19 @@ export async function getUTXOsToCoverAmount({
     }
 }
 
-export function isExcludedUtxo(utxo: FormattedUtxo, excludedUtxos: FormattedUtxo[]) {
+export function isExcludedUtxo(utxo: FormattedUtxo, excludedUtxos: FormattedUtxo[]): Boolean {
     return excludedUtxos.some(
         (excluded) => excluded.txId === utxo.txId && excluded.outputIndex === utxo.outputIndex
     )
+}
+
+export function getAllUTXOsWorthASpecificValue(utxos: FormattedUtxo[], value: number): FormattedUtxo[] {
+    return utxos.filter((utxo) => utxo.satoshis === value)
+}
+
+export function addInputConditionally(inputData: ConditionalInput, addressType: AddressType, pubKey: string): ConditionalInput {
+    if (addressType === AddressType.P2TR) {
+        inputData['tapInternalKey'] = assertHex(Buffer.from(pubKey, 'hex'))
+    }
+    return inputData;
 }

@@ -85,6 +85,16 @@ export interface TxInput {
     };
     utxo: UnspentOutput;
 }
+export interface ConditionalInput {
+    hash: string;
+    index: number;
+    witnessUtxo: {
+        value: number;
+        script: Buffer;
+    };
+    tapInternalKey?: Buffer;
+    segwitInternalKey?: Buffer;
+}
 export interface TxOutput {
     address: string;
     value: number;
