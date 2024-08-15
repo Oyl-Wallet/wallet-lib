@@ -271,14 +271,24 @@ export interface PsbtBuilder {
     provider: Provider
     retrievedUtxos?: FormattedUtxo[]
     inputTemplate:  ConditionalInput[]
-    outputTemplate:  any[]
+    changeOutput: OutputTxTemplate | null
+    outputTemplate:  OutputTxTemplate[]
     amountRetrieved: number
-    amountNeeded: number
     spendAddress: string
     spendPubKey: string
     spendAmount: number
-    network: bitcoin.Network
     addressType: AddressType
+    feeRate: number
+}
+
+export interface BuiltPsbt {
+  psbtHex: string,
+  psbtBase64: string
+}
+
+export interface OutputTxTemplate {
+  address: string
+  value: number
 }
 
 export interface MarketplaceBuy {

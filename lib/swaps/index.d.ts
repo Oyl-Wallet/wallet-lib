@@ -19,15 +19,5 @@ export declare class Engine {
         signedPsbt: string;
         signedHexPsbt: string;
     }>;
-    /**
-     *
-     * Prepare an address for atomic swaps by creating two fresh 600 satoshi UTXOS
-     * for building the
-     */
-    prepareAddress(): Promise<Boolean>;
-    dummyUtxosPsbt(): Promise<{
-        psbtHex: string;
-        psbtBase64: string;
-    }>;
     processUnisatOffers(offers: MarketplaceOffer[]): Promise<void>;
 }

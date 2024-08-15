@@ -1,6 +1,6 @@
 import { FormattedUtxo, addressSpendableUtxos } from '../utxo/utxo';
 import { Provider } from "provider";
-import { AddressType, BidAffordabilityCheck, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount, marketplaceName } from "../shared/interface";
+import { AddressType, BidAffordabilityCheck, BuiltPsbt, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount, marketplaceName } from "../shared/interface";
 import { assertHex, getOutputFormat, getTxSizeByAddressType } from "../shared/utils";
 import * as bitcoin from 'bitcoinjs-lib'
 
@@ -9,6 +9,7 @@ export const maxTxSizeForOffers: number = 482
 export const CONFIRMED_UTXO_ENFORCED_MARKETPLACES: Marketplaces[] = [Marketplaces.UNISAT]
 export const ESTIMATE_TX_SIZE: number = 350
 export const DUMMY_UTXO_SATS = 600 + 600
+
 
 
 export async function getUTXOsToCoverAmount({
@@ -214,35 +215,37 @@ export async function buildPsbtWithFee(
     {
     inputTemplate = [], 
     outputTemplate = [],
+    changeOutput,
     retrievedUtxos = [],
-    amountNeeded,
     spendAddress,
     spendPubKey,
     amountRetrieved,
     spendAmount,
     addressType,
-    provider,
-    network
+    feeRate,
+    provider
     }: PsbtBuilder
-    ) {
-    const psbtTx = new bitcoin.Psbt({ network });
+    ): Promise<BuiltPsbt> {
+    const psbtTx = new bitcoin.Psbt({ network: provider.network });
     if (inputTemplate.length === 0 || outputTemplate.length === 0) {
         throw new Error('Cant create a psbt with 0 inputs & outputs')
     } 
 
     inputTemplate.forEach(input => psbtTx.addInput(input));
     outputTemplate.forEach(output => psbtTx.addOutput(output));
+    if (changeOutput != null) psbtTx.addOutput(changeOutput)
 
-    const finalTxSize = estimatePsbtFee({psbt: psbtTx, network});
-    const finalFee = parseInt((finalTxSize * this.feeRate).toFixed(0));
+    const finalTxSize = estimatePsbtFee({psbt: psbtTx, network: provider.network});
+    const finalFee = parseInt((finalTxSize * feeRate).toFixed(0));
     
-    let remainder = amountRetrieved - (spendAmount + finalFee);
     let newAmountNeeded = spendAmount + finalFee;
+    let changeAmount = amountRetrieved - newAmountNeeded;
+   
 
-    if (remainder < 0) { //consider a better condition
+    if (changeAmount < 0) { 
         const additionalUtxos = await getUTXOsToCoverAmount({
-            address: this.spendAddress,
-            amountNeeded: newAmountNeeded - amountRetrieved,
+            address: spendAddress,
+            amountNeeded: newAmountNeeded,
             excludedUtxos: retrievedUtxos,
             provider
         });
@@ -262,25 +265,23 @@ export async function buildPsbtWithFee(
                 inputTemplate.push(input)
             })
 
-            return await buildPsbtWithFee({amountNeeded, spendAddress, spendAmount, network, spendPubKey, amountRetrieved, addressType, provider, retrievedUtxos, inputTemplate, outputTemplate});
+            amountRetrieved = calculateAmountGathered(retrievedUtxos)
+            changeAmount = amountRetrieved - newAmountNeeded
+            if (changeAmount > 0) changeOutput = {address: spendAddress, value: changeAmount}
+
+            return await buildPsbtWithFee({spendAddress, spendAmount, feeRate, spendPubKey, amountRetrieved, addressType, provider, changeOutput, retrievedUtxos, inputTemplate, outputTemplate});
         } else {
                 throw new Error('Insufficient funds: cannot cover transaction fee with available UTXOs')
         }
-    } else {// if  remainder is greater than dust
-        // Update the last output to reflect the correct remainder
-        const lastIndex = outputTemplate.length - 1
-        outputTemplate[lastIndex] = {
-            address: spendAddress,
-            value: remainder,
-        }
-        const finalPsbtTx = new bitcoin.Psbt({ network });
-        inputTemplate.forEach(input => psbtTx.addInput(input));
-        outputTemplate.forEach(output => psbtTx.addOutput(output));
+    } else {
+        const finalPsbtTx = new bitcoin.Psbt({ network: provider.network });
+        inputTemplate.forEach(input => finalPsbtTx.addInput(input));
+        outputTemplate.forEach(output => finalPsbtTx.addOutput(output));
+        if (changeOutput != null) finalPsbtTx.addOutput(changeOutput)
+        return {
+            psbtHex: finalPsbtTx.toHex(),
+            psbtBase64: finalPsbtTx.toBase64()
+        };
     }
-
-    return {
-        psbtHex: psbtTx.toHex(),
-        psbtBase64: psbtTx.toBase64()
-    };
 }
     
