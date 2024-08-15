@@ -207,9 +207,8 @@ export interface MarketplaceAccount {
     feeRate: number;
 }
 export interface UtxosToCoverAmount {
-    address: string;
+    utxos: FormattedUtxo[];
     amountNeeded: number;
-    provider: Provider;
     excludedUtxos?: FormattedUtxo[];
     insistConfirmedUtxos?: boolean;
 }
@@ -240,7 +239,8 @@ export interface FeeEstimatorOptions {
     witness?: Buffer[];
 }
 export interface PsbtBuilder {
-    provider: Provider;
+    network: bitcoin.Network;
+    utxos: FormattedUtxo[];
     retrievedUtxos?: FormattedUtxo[];
     inputTemplate: ConditionalInput[];
     changeOutput: OutputTxTemplate | null;

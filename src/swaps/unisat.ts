@@ -4,7 +4,7 @@ import { Provider } from "provider"
 import { getAddressType } from ".."
 import { signBip322Message } from "./BIP322"
 
-export interface UnsignedBid {
+export interface UnsignedUnisatBid {
     address: string
     auctionId: string
     bidPrice: number
@@ -16,7 +16,7 @@ export interface UnsignedBid {
     assetType: AssetType
   }
 
-  export interface SignedBid {
+  export interface SignedUnisatBid {
     psbtHex: string
     auctionId: string
     bidId: string
@@ -24,7 +24,7 @@ export interface UnsignedBid {
     assetType: AssetType
   }
 
-export async function getPsbt(unsignedBid: UnsignedBid) {
+export async function getPsbt(unsignedBid: UnsignedUnisatBid) {
     switch (unsignedBid.assetType) {
       case AssetType.BRC20:
         return await unsignedBid.provider.api.initSwapBid(unsignedBid)
@@ -37,7 +37,7 @@ export async function getPsbt(unsignedBid: UnsignedBid) {
     }
   }
 
- export async function submitPsbt(signedBid: SignedBid) {
+ export async function submitPsbt(signedBid: SignedUnisatBid) {
     switch (signedBid.assetType) {
       case AssetType.BRC20:
         return await signedBid.provider.api.submitSignedBid({...signedBid, psbtBid: signedBid.psbtHex})
@@ -70,7 +70,7 @@ export async function getPsbt(unsignedBid: UnsignedBid) {
     provider: Provider
     signer: Signer
 }) {
-    const unsignedBid: UnsignedBid = {
+    const unsignedBid: UnsignedUnisatBid = {
       address,
       auctionId: offer.offerId,
       bidPrice: offer.totalPrice,

@@ -74,17 +74,12 @@ export class Engine {
     }
 
 
-    async signMarketplacePsbt(psbt: string, finalize: boolean = false) {
-        const payload = await this.signer.signAllInputs({
-            rawPsbt: psbt,
-            finalize,
-        })
-        return payload
-    }
+
     
 
    
     async processUnisatOffers(offers: MarketplaceOffer[]) {
+
         await this.selectSpendAddress(offers);
         const processedOffers = await unisatSwap ({
             address: this.selectedSpendAddress,

@@ -2,15 +2,38 @@ import * as bitcoin from 'bitcoinjs-lib'
 import { FormattedUtxo, addressSpendableUtxos } from '../utxo/utxo';
 import { Signer } from '../signer'
 import { Provider } from 'provider'
-import { DUMMY_UTXO_SATS, ESTIMATE_TX_SIZE, addInputConditionally, buildPsbtWithFee, calculateAmountGathered, getAllUTXOsWorthASpecificValue, getUTXOsToCoverAmount } from './helpers'
-import { AddressType, BuiltPsbt, ConditionalInput, OutputTxTemplate } from 'shared/interface'
+import { getAddressType, timeout } from ".."
+import {
+    genSignedBuyingPSBTWithoutListSignature,
+    generateUnsignedBuyingPsbt,
+    mergeSignedBuyingPsbt,
+    BuyingData,
+} from '@okxweb3/coin-bitcoin'
+import { DUMMY_UTXO_SATS, ESTIMATE_TX_SIZE, addInputConditionally, broadcastSignedTx, buildPsbtWithFee, calculateAmountGathered, getAllUTXOsWorthASpecificValue, getUTXOsToCoverAmount } from './helpers'
+import { AddressType, AssetType, BuiltPsbt, ConditionalInput, MarketplaceOffer, OutputTxTemplate } from 'shared/interface'
 
 interface DummyUtxoOptions {
     address: string
-    provider: Provider
+    utxos: FormattedUtxo[]
     feeRate: number
     pubKey: string
+    network: bitcoin.Network
     addressType: AddressType
+}
+
+interface BuyingDataUtxos {
+    txHash: string
+    vout: number
+    coinAmount: number
+}
+
+interface PaymentUtxoOptions {
+    utxos: FormattedUtxo[]
+    feeRate: number
+    orderPrice: number
+    address: string
+    receiveAddress: string
+    sellerPsbt: string
 }
 
 interface PrepareOkxAddress {
@@ -19,54 +42,80 @@ interface PrepareOkxAddress {
     feeRate: number
     pubKey: string
     addressType: AddressType
-    signer: Signer
 }
 
+interface SignedOkxBid {
+    fromAddress: string;
+    psbt?: string;
+    assetType: AssetType
+    provider: Provider
+    offer: MarketplaceOffer
+}
 
-/**
-     * 
-     * Prepare an address for atomic swaps by creating two fresh 600 satoshi UTXOS
-     * for building the 
-     */
+interface UnsignedOkxBid {
+    offerId: number
+    assetType: AssetType
+    provider: Provider
+}
+
+interface GenBrcAndCollectibleSignedPsbt {
+    address: string
+    utxos: FormattedUtxo[]
+    feeRate: number
+    receiveAddress: string
+    network: bitcoin.Network
+    pubKey: string
+    addressType: AddressType
+    signer?: Signer
+    sellerPsbt: string
+    orderPrice: number
+}
+
+interface GenBrcAndCollectibleUnsignedPsbt {
+    address: string
+    utxos: FormattedUtxo[]
+    feeRate: number
+    receiveAddress: string
+    network: bitcoin.Network
+    pubKey: string
+    addressType: AddressType
+    sellerPsbt: string
+    orderPrice: number
+}
+
+interface UnsignedPsbt {
+    address: string
+    utxos: FormattedUtxo[]
+    feeRate: number
+    receiveAddress: string
+    network: bitcoin.Network
+    pubKey: string
+    addressType: AddressType
+    signer?: Signer
+    sellerPsbt: string
+    orderPrice: number
+    sellerAddress?: string
+    assetType: AssetType
+}
+
 export async function prepareAddressForOkxPsbt({
     address,
     provider,
     pubKey,
     feeRate,
     addressType,
-    signer
 }:
     PrepareOkxAddress
-): Promise<string[]> {
+): Promise<string | null>{
     try {
         const { utxos } = await addressSpendableUtxos({ address, provider });
         const paddingUtxos = getAllUTXOsWorthASpecificValue(utxos, 600)
         if (paddingUtxos.length < 2) {
-            const { psbtBase64 } = await dummyUtxosPsbt({ address, provider, feeRate, pubKey, addressType })
-            const signedPsbtPayload = await signer.signAllInputs({
-                rawPsbt: psbtBase64,
-                finalize: true,
-            })
-            const result = await provider.sandshrew.bitcoindRpc.finalizePSBT(
-                signedPsbtPayload.signedPsbt
-            )
-            const [broadcast] =
-                await provider.sandshrew.bitcoindRpc.testMemPoolAccept([
-                    result?.hex,
-                ])
-
-            if (!broadcast.allowed) {
-                throw new Error(result['reject-reason'])
-            }
-            await provider.sandshrew.bitcoindRpc.sendRawTransaction(result?.hex)
-            const txPayload =
-                await provider.sandshrew.bitcoindRpc.decodeRawTransaction(
-                    result?.hex
-                )
-            const txId = txPayload.txid
-            return [txId]
+            const network = provider.network
+            const { psbtBase64 } = dummyUtxosPsbt({ address, utxos, network, feeRate, pubKey, addressType })
+            return psbtBase64;
         }
-        return []
+        return null;
     } catch (err) {
         throw new Error(
             'An error occured while preparing address for okx marketplace'
@@ -74,12 +123,13 @@ export async function prepareAddressForOkxPsbt({
     }
 }
 
-export async function dummyUtxosPsbt({ address, provider, feeRate, pubKey, addressType }: DummyUtxoOptions): Promise<BuiltPsbt> {
+
+
+export function dummyUtxosPsbt({ address, utxos, feeRate, pubKey, addressType, network }: DummyUtxoOptions): BuiltPsbt {
     const amountNeeded = (DUMMY_UTXO_SATS + parseInt((ESTIMATE_TX_SIZE * feeRate).toFixed(0)))
-    const retrievedUtxos = await getUTXOsToCoverAmount({
-        address,
+    const retrievedUtxos = getUTXOsToCoverAmount({
+        utxos,
         amountNeeded,
-        provider
     })
     if (retrievedUtxos.length === 0) {
         throw new Error('No utxos available')
@@ -113,9 +163,10 @@ export async function dummyUtxosPsbt({ address, provider, feeRate, pubKey, addre
     })
     if (changeAmount > 0) changeOutput = { address, value: changeAmount }
 
-    return await buildPsbtWithFee({
+    return buildPsbtWithFee({
         inputTemplate: txInputs,
         outputTemplate: txOutputs,
+        utxos,
         changeOutput,
         retrievedUtxos,
         spendAddress: address,
@@ -123,8 +174,255 @@ export async function dummyUtxosPsbt({ address, provider, feeRate, pubKey, addre
         amountRetrieved,
         spendAmount: DUMMY_UTXO_SATS,
         feeRate,
-        provider,
+        network,
         addressType
     })
+
+}
+
+
+export async function getSellerPsbt(unsignedBid: UnsignedOkxBid) {
+    switch (unsignedBid.assetType) {
+        case AssetType.BRC20:
+            return await unsignedBid.provider.api.getOkxOfferPsbt({ offerId: unsignedBid.offerId })
+
+        case AssetType.RUNES:
+            return await unsignedBid.provider.api.getOkxOfferPsbt({ offerId: unsignedBid.offerId, rune: true })
+
+        case AssetType.COLLECTIBLE:
+            return await unsignedBid.provider.api.getOkxOfferPsbt({ offerId: unsignedBid.offerId })
+    }
+}
+
+
+export async function submitSignedPsbt(signedBid: SignedOkxBid) {
+    const offer = signedBid.offer
+    switch (signedBid.assetType) {
+        case AssetType.BRC20:
+            const brcPayload = {
+                ticker: offer.ticker,
+                price: offer.totalPrice,
+                amount: parseInt(offer.amount),
+                fromAddress: signedBid.fromAddress,
+                toAddress: offer.address,
+                inscriptionId: offer.inscriptionId,
+                buyerPsbt: signedBid.psbt,
+                orderId: offer.offerId,
+                brc20: true
+            }
+            return await signedBid.provider.api.submitOkxBid(brcPayload)
+
+        case AssetType.RUNES:
+            const runePayload = {
+                fromAddress: signedBid.fromAddress,
+                psbt: signedBid.psbt,
+                orderId: offer.offerId,
+            }
+            return await signedBid.provider.api.submitOkxRuneBid(runePayload)
+
+        case AssetType.COLLECTIBLE:
+            const collectiblePayload = {
+                ticker: offer.ticker,
+                price: offer.totalPrice,
+                amount: parseInt(offer.amount),
+                fromAddress: signedBid.fromAddress,
+                toAddress: offer.address,
+                inscriptionId: offer.inscriptionId,
+                buyerPsbt: signedBid.psbt,
+                orderId: offer.offerId,
+                brc20: false
+            }
+            return await signedBid.provider.api.submitOkxBid(collectiblePayload)
+
+    }
+}
+export async function getBuyerPsbt(unsignedPsbt: UnsignedPsbt) {
+    switch (unsignedPsbt.assetType) {
+        case AssetType.BRC20:
+            if (!unsignedPsbt.signer) {
+                return genBrcAndOrdinalUnsignedPsbt(unsignedPsbt)
+            } else {
+                return genBrcAndOrdinalSignedPsbt(unsignedPsbt)
+            }
+
+
+        case AssetType.RUNES:
+            return
+
+        case AssetType.COLLECTIBLE:
+            if (!unsignedPsbt.signer) {
+                return genBrcAndOrdinalUnsignedPsbt(unsignedPsbt)
+            } else {
+                return genBrcAndOrdinalSignedPsbt(unsignedPsbt)
+            }
+    }
+}
+
+export function genBrcAndOrdinalSignedPsbt({
+    address,
+    utxos,
+    network,
+    addressType,
+    orderPrice,
+    signer,
+    sellerPsbt,
+    feeRate,
+    receiveAddress
+}: GenBrcAndCollectibleSignedPsbt
+): string {
+    const keyPair =
+        addressType == AddressType.P2WPKH
+            ? signer.segwitKeyPair
+            : signer.taprootKeyPair
+    const privateKey = keyPair.toWIF()
+    const data = buildDummyAndPaymentUtxos({ utxos, feeRate, orderPrice, address, receiveAddress, sellerPsbt }) as any
+    const buyingData: BuyingData = data
+    const buyerPsbt = genSignedBuyingPSBTWithoutListSignature(
+        buyingData,
+        privateKey,
+        network
+    )
+    //base64 format
+    return buyerPsbt
+}
+
+export function genBrcAndOrdinalUnsignedPsbt({
+    address,
+    utxos,
+    network,
+    pubKey,
+    orderPrice,
+    sellerPsbt,
+    feeRate,
+    receiveAddress
+}: GenBrcAndCollectibleUnsignedPsbt
+): string {
+    const data = buildDummyAndPaymentUtxos({ utxos, feeRate, orderPrice, address, receiveAddress, sellerPsbt }) as any
+
+    const buyingData: BuyingData = data
+    const buyerPsbt = generateUnsignedBuyingPsbt(
+        buyingData,
+        network,
+        pubKey
+    )
+    //base64 format
+    return buyerPsbt
+}
+
+export function mergeSignedPsbt(signedBuyerPsbt: string, sellerPsbt: string[]): string {
+    const mergedPsbt = mergeSignedBuyingPsbt(signedBuyerPsbt, sellerPsbt)
+    return mergedPsbt.toBase64()
+}
+
+export function buildDummyAndPaymentUtxos({ utxos, feeRate, orderPrice, address, receiveAddress, sellerPsbt }: PaymentUtxoOptions) {
+    const allUtxosWorth600 = getAllUTXOsWorthASpecificValue(utxos, 600)
+    if (allUtxosWorth600.length < 2) {
+        throw new Error('not enough padding utxos (600 sat) for marketplace buy')
+    }
+
+    const dummyUtxos = []
+    for (let i = 0; i < 2; i++) {
+        dummyUtxos.push({
+            txHash: allUtxosWorth600[i].txId,
+            vout: allUtxosWorth600[i].outputIndex,
+            coinAmount: allUtxosWorth600[i].satoshis,
+        })
+    }
+
+    const amountNeeded = orderPrice + parseInt((ESTIMATE_TX_SIZE * feeRate).toFixed(0))
+    const retrievedUtxos = getUTXOsToCoverAmount({
+        utxos,
+        amountNeeded,
+        excludedUtxos: dummyUtxos
+    })
+    if (retrievedUtxos.length === 0) {
+        throw new Error('Not enough funds to purchase this offer')
+    }
+
+    const paymentUtxos = []
+    retrievedUtxos.forEach((utxo) => {
+        paymentUtxos.push({
+            txHash: utxo.txId,
+            vout: utxo.outputIndex,
+            coinAmount: utxo.satoshis,
+        })
+    })
+
+    const data = {
+        dummyUtxos,
+        paymentUtxos,
+    }
+    data['receiveNftAddress'] = receiveAddress
+    data['paymentAndChangeAddress'] = address
+    data['feeRate'] = feeRate
+    data['sellerPsbts'] = [sellerPsbt]
+
+    return data
+}
+
+export async function okxSwap ({
+    address, 
+    offer,
+    receiveAddress,
+    feeRate,
+    pubKey,
+    assetType,
+    provider,
+    signer
+}:{
+    address: string
+    offer: MarketplaceOffer
+    receiveAddress: string
+    feeRate: number
+    pubKey: string
+    assetType: AssetType
+    provider: Provider
+    signer: Signer
+}) {
+    const addressType = getAddressType(address);
+    const checkAddressPrepared = await prepareAddressForOkxPsbt({address, provider, pubKey, feeRate, addressType})
+    if (checkAddressPrepared != null){
+        const signedPsbtPayload = await signer.signAllInputs({
+            rawPsbt: checkAddressPrepared,
+            finalize: true,
+        })
+        const prepTxId = await broadcastSignedTx(signedPsbtPayload.signedPsbt, provider)
+        console.log("preptxid", prepTxId)
+        await timeout(10000)
+    }
+    const unsignedBid: UnsignedOkxBid = {
+        offerId: offer.offerId,
+        provider,
+        assetType
+    }
+    
+    const sellerData = await getSellerPsbt(unsignedBid);
+    const sellerPsbt = sellerData.data.sellerPsbt;
+    const network = provider.network
+    const { utxos } = await addressSpendableUtxos({ address, provider });
+    const buyerPsbt = await getBuyerPsbt({
+        address,
+        utxos,
+        feeRate,
+        receiveAddress,
+        network,
+        pubKey,
+        addressType,
+        signer,
+        sellerPsbt,
+        orderPrice: offer.totalPrice,
+        assetType
+    })
+
+    const transaction = await submitSignedPsbt({
+        fromAddress: address,
+        psbt: buyerPsbt,
+        assetType,
+        provider,
+        offer
+    })
+
+
+   console.log(transaction)
 
 }

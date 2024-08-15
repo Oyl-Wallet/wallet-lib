@@ -7,7 +7,7 @@ export declare const maxTxSizeForOffers: number;
 export declare const CONFIRMED_UTXO_ENFORCED_MARKETPLACES: Marketplaces[];
 export declare const ESTIMATE_TX_SIZE: number;
 export declare const DUMMY_UTXO_SATS: number;
-export declare function getUTXOsToCoverAmount({ address, amountNeeded, provider, excludedUtxos, insistConfirmedUtxos }: UtxosToCoverAmount): Promise<FormattedUtxo[]>;
+export declare function getUTXOsToCoverAmount({ utxos, amountNeeded, excludedUtxos, insistConfirmedUtxos }: UtxosToCoverAmount): FormattedUtxo[];
 export declare function isExcludedUtxo(utxo: FormattedUtxo, excludedUtxos: FormattedUtxo[]): Boolean;
 export declare function getAllUTXOsWorthASpecificValue(utxos: FormattedUtxo[], value: number): FormattedUtxo[];
 export declare function addInputConditionally(inputData: ConditionalInput, addressType: AddressType, pubKey: string): ConditionalInput;
@@ -20,6 +20,7 @@ export declare function getBidCostEstimate(offers: MarketplaceOffer[], feeRate: 
  *  */
 export declare function canAddressAffordBid({ address, estimatedCost, offers, provider }: BidAffordabilityCheck): Promise<Boolean>;
 export declare function calculateAmountGathered(utxoArray: FormattedUtxo[]): number;
+export declare function broadcastSignedTx(psbt: string, provider: Provider): Promise<any[]>;
 export declare function sanitizeFeeRate(provider: Provider, feeRate: number): Promise<number>;
 export declare function psbtTxAddressTypes({ psbt, network }: {
     psbt: bitcoin.Psbt;
@@ -33,4 +34,4 @@ export declare function estimatePsbtFee({ psbt, network, witness }: {
     network: bitcoin.Network;
     witness?: Buffer[];
 }): number;
-export declare function buildPsbtWithFee({ inputTemplate, outputTemplate, changeOutput, retrievedUtxos, spendAddress, spendPubKey, amountRetrieved, spendAmount, addressType, feeRate, provider }: PsbtBuilder): Promise<BuiltPsbt>;
+export declare function buildPsbtWithFee({ inputTemplate, outputTemplate, utxos, changeOutput, retrievedUtxos, spendAddress, spendPubKey, amountRetrieved, spendAmount, addressType, feeRate, network }: PsbtBuilder): BuiltPsbt;

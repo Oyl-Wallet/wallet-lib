@@ -15,9 +15,5 @@ export declare class Engine {
     addressesBound: boolean;
     constructor(options: MarketplaceAccount);
     selectSpendAddress(offers: MarketplaceOffer[]): Promise<void>;
-    signMarketplacePsbt(psbt: string, finalize?: boolean): Promise<{
-        signedPsbt: string;
-        signedHexPsbt: string;
-    }>;
     processUnisatOffers(offers: MarketplaceOffer[]): Promise<void>;
 }

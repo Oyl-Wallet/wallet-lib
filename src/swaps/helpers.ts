@@ -12,20 +12,18 @@ export const DUMMY_UTXO_SATS = 600 + 600
 
 
 
-export async function getUTXOsToCoverAmount({
-    address,
+export function getUTXOsToCoverAmount({
+    utxos,
     amountNeeded,
-    provider,
     excludedUtxos = [],
     insistConfirmedUtxos = false
 }:
     UtxosToCoverAmount
-): Promise<FormattedUtxo[]> {
+): FormattedUtxo[] {
     try {
-        const { utxos } = await addressSpendableUtxos({ address, provider });
         let sum = 0
         const result: FormattedUtxo[] = [];
-        for await (let utxo of utxos) {
+        for (let utxo of utxos) {
             if (isExcludedUtxo(utxo, excludedUtxos)) {
                 // Check if the UTXO should be excluded
                 continue
@@ -92,10 +90,9 @@ export async function canAddressAffordBid({ address, estimatedCost, offers, prov
         }
     }
     const excludedUtxos = getAllUTXOsWorthASpecificValue(utxos, 600).slice(0, 2)
-    const retrievedUtxos: FormattedUtxo[] = await getUTXOsToCoverAmount({
-        address,
+    const retrievedUtxos: FormattedUtxo[] = getUTXOsToCoverAmount({
+        utxos,
         amountNeeded: estimatedCost,
-        provider,
         excludedUtxos,
         insistConfirmedUtxos
     })
@@ -108,6 +105,28 @@ export function calculateAmountGathered(utxoArray: FormattedUtxo[]): number {
         (prev, currentValue) => prev + currentValue.satoshis,
         0
     )
+}
+
+export async function broadcastSignedTx(psbt: string, provider: Provider){
+    const result = await provider.sandshrew.bitcoindRpc.finalizePSBT(
+        psbt
+    )
+    const [broadcast] =
+        await provider.sandshrew.bitcoindRpc.testMemPoolAccept([
+            result?.hex,
+        ])
+
+    if (!broadcast.allowed) {
+        throw new Error(result['reject-reason'])
+    }
+    await provider.sandshrew.bitcoindRpc.sendRawTransaction(result?.hex)
+    const txPayload =
+        await provider.sandshrew.bitcoindRpc.decodeRawTransaction(
+            result?.hex
+        )
+    const txId = txPayload.txid
+    return [txId]
+
 }
 
 export async function sanitizeFeeRate(provider: Provider, feeRate: number): Promise<number> {
@@ -211,10 +230,11 @@ export function estimatePsbtFee({
     return Math.ceil(weight / 4);
 }
 
-export async function buildPsbtWithFee(
+export function buildPsbtWithFee(
     {
     inputTemplate = [], 
     outputTemplate = [],
+    utxos,
     changeOutput,
     retrievedUtxos = [],
     spendAddress,
@@ -223,10 +243,10 @@ export async function buildPsbtWithFee(
     spendAmount,
     addressType,
     feeRate,
-    provider
+    network
     }: PsbtBuilder
-    ): Promise<BuiltPsbt> {
-    const psbtTx = new bitcoin.Psbt({ network: provider.network });
+    ): BuiltPsbt {
+    const psbtTx = new bitcoin.Psbt({ network });
     if (inputTemplate.length === 0 || outputTemplate.length === 0) {
         throw new Error('Cant create a psbt with 0 inputs & outputs')
     } 
@@ -235,7 +255,7 @@ export async function buildPsbtWithFee(
     outputTemplate.forEach(output => psbtTx.addOutput(output));
     if (changeOutput != null) psbtTx.addOutput(changeOutput)
 
-    const finalTxSize = estimatePsbtFee({psbt: psbtTx, network: provider.network});
+    const finalTxSize = estimatePsbtFee({psbt: psbtTx, network});
     const finalFee = parseInt((finalTxSize * feeRate).toFixed(0));
     
     let newAmountNeeded = spendAmount + finalFee;
@@ -243,11 +263,10 @@ export async function buildPsbtWithFee(
    
 
     if (changeAmount < 0) { 
-        const additionalUtxos = await getUTXOsToCoverAmount({
-            address: spendAddress,
+        const additionalUtxos = getUTXOsToCoverAmount({
+            utxos,
             amountNeeded: newAmountNeeded,
             excludedUtxos: retrievedUtxos,
-            provider
         });
 
         if (additionalUtxos.length > 0) {
@@ -269,12 +288,25 @@ export async function buildPsbtWithFee(
             changeAmount = amountRetrieved - newAmountNeeded
             if (changeAmount > 0) changeOutput = {address: spendAddress, value: changeAmount}
 
-            return await buildPsbtWithFee({spendAddress, spendAmount, feeRate, spendPubKey, amountRetrieved, addressType, provider, changeOutput, retrievedUtxos, inputTemplate, outputTemplate});
+            return buildPsbtWithFee({
+                spendAddress, 
+                utxos, 
+                spendAmount, 
+                feeRate, 
+                spendPubKey, 
+                amountRetrieved, 
+                addressType, 
+                network, 
+                changeOutput, 
+                retrievedUtxos, 
+                inputTemplate, 
+                outputTemplate
+            });
         } else {
                 throw new Error('Insufficient funds: cannot cover transaction fee with available UTXOs')
         }
     } else {
-        const finalPsbtTx = new bitcoin.Psbt({ network: provider.network });
+        const finalPsbtTx = new bitcoin.Psbt({ network });
         inputTemplate.forEach(input => finalPsbtTx.addInput(input));
         outputTemplate.forEach(output => finalPsbtTx.addOutput(output));
         if (changeOutput != null) finalPsbtTx.addOutput(changeOutput)
