@@ -16,4 +16,5 @@ export declare class Engine {
     constructor(options: MarketplaceAccount);
     selectSpendAddress(offers: MarketplaceOffer[]): Promise<void>;
     processUnisatOffers(offers: MarketplaceOffer[]): Promise<void>;
+    processOkxOffers(offers: MarketplaceOffer[]): Promise<void>;
 }

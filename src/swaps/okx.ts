@@ -2,7 +2,7 @@ import * as bitcoin from 'bitcoinjs-lib'
 import { FormattedUtxo, addressSpendableUtxos } from '../utxo/utxo';
 import { Signer } from '../signer'
 import { Provider } from 'provider'
-import { getAddressType, timeout } from ".."
+import { getAddressType, timeout, waitForTransaction } from ".."
 import {
     genSignedBuyingPSBTWithoutListSignature,
     generateUnsignedBuyingPsbt,
@@ -10,7 +10,7 @@ import {
     BuyingData,
 } from '@okxweb3/coin-bitcoin'
 import { DUMMY_UTXO_SATS, ESTIMATE_TX_SIZE, addInputConditionally, broadcastSignedTx, buildPsbtWithFee, calculateAmountGathered, getAllUTXOsWorthASpecificValue, getUTXOsToCoverAmount } from './helpers'
-import { AddressType, AssetType, BuiltPsbt, ConditionalInput, MarketplaceOffer, OutputTxTemplate } from 'shared/interface'
+import { AddressType, AssetType, BuiltPsbt, ConditionalInput, MarketplaceOffer, OutputTxTemplate } from "../shared/interface"
 
 interface DummyUtxoOptions {
     address: string
@@ -388,7 +388,7 @@ export async function okxSwap ({
         })
         const prepTxId = await broadcastSignedTx(signedPsbtPayload.signedPsbt, provider)
         console.log("preptxid", prepTxId)
-        await timeout(10000)
+        await timeout(30000)
     }
     const unsignedBid: UnsignedOkxBid = {
         offerId: offer.offerId,

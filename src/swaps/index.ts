@@ -16,6 +16,7 @@ import { Account } from '@account/account'
 import { DUMMY_UTXO_SATS, ESTIMATE_TX_SIZE, addInputConditionally, calculateAmountGathered, canAddressAffordBid, estimatePsbtFee, getAllUTXOsWorthASpecificValue, getBidCostEstimate, getUTXOsToCoverAmount, sanitizeFeeRate } from './helpers'
 import { addressSpendableUtxos } from '../utxo/utxo'
 import { unisatSwap } from './unisat'
+import { okxSwap } from './okx'
 
 export class Engine {
     private provider: Provider
@@ -86,6 +87,22 @@ export class Engine {
             offer: offers[0],
             receiveAddress: this.receiveAddress,
             feerate: this.feeRate,
+            pubKey: this.selectedSpendPubkey,
+            assetType: this.assetType,
+            provider: this.provider,
+            signer: this.signer
+        })
+        console.log(processedOffers)
+    }
+
+    async processOkxOffers(offers: MarketplaceOffer[]) {
+
+        await this.selectSpendAddress(offers);
+        const processedOffers = await okxSwap ({
+            address: this.selectedSpendAddress,
+            offer: offers[0],
+            receiveAddress: this.receiveAddress,
+            feeRate: this.feeRate,
             pubKey: this.selectedSpendPubkey,
             assetType: this.assetType,
             provider: this.provider,

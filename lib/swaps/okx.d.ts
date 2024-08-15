@@ -2,7 +2,7 @@ import * as bitcoin from 'bitcoinjs-lib';
 import { FormattedUtxo } from '../utxo/utxo';
 import { Signer } from '../signer';
 import { Provider } from 'provider';
-import { AddressType, AssetType, BuiltPsbt, MarketplaceOffer } from 'shared/interface';
+import { AddressType, AssetType, BuiltPsbt, MarketplaceOffer } from "../shared/interface";
 interface DummyUtxoOptions {
     address: string;
     utxos: FormattedUtxo[];

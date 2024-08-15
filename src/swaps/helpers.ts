@@ -96,7 +96,6 @@ export async function canAddressAffordBid({ address, estimatedCost, offers, prov
         excludedUtxos,
         insistConfirmedUtxos
     })
-    console.log(retrievedUtxos)
     return retrievedUtxos.length > 0
 }
 
@@ -306,9 +305,11 @@ export function buildPsbtWithFee(
                 throw new Error('Insufficient funds: cannot cover transaction fee with available UTXOs')
         }
     } else {
+        if (changeAmount > 0) changeOutput = {address: spendAddress, value: changeAmount}
         const finalPsbtTx = new bitcoin.Psbt({ network });
         inputTemplate.forEach(input => finalPsbtTx.addInput(input));
         outputTemplate.forEach(output => finalPsbtTx.addOutput(output));
+        
         if (changeOutput != null) finalPsbtTx.addOutput(changeOutput)
         return {
             psbtHex: finalPsbtTx.toHex(),
