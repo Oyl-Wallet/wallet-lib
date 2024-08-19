@@ -133,6 +133,12 @@ export declare enum AddressType {
     P2SH_P2WPKH = 2,
     P2WPKH = 3
 }
+export interface SelectSpendAddress {
+    offers: MarketplaceOffer[];
+    provider: Provider;
+    feeRate: number;
+    account: Account;
+}
 export interface MarketplaceOffer {
     ticker: string;
     offerId: any;

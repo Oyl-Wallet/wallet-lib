@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { FormattedUtxo } from '../utxo/utxo';
 import { Provider } from "provider";
-import { AddressType, BidAffordabilityCheck, BuiltPsbt, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount } from "../shared/interface";
+import { AddressType, BidAffordabilityCheck, BuiltPsbt, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, SelectSpendAddress, UtxosToCoverAmount } from "../shared/interface";
 import * as bitcoin from 'bitcoinjs-lib';
 export declare const maxTxSizeForOffers: number;
 export declare const CONFIRMED_UTXO_ENFORCED_MARKETPLACES: Marketplaces[];
@@ -21,6 +21,11 @@ export declare function getBidCostEstimate(offers: MarketplaceOffer[], feeRate: 
 export declare function canAddressAffordBid({ address, estimatedCost, offers, provider }: BidAffordabilityCheck): Promise<Boolean>;
 export declare function calculateAmountGathered(utxoArray: FormattedUtxo[]): number;
 export declare function broadcastSignedTx(psbt: string, provider: Provider): Promise<any[]>;
+export declare function selectSpendAddress({ offers, provider, feeRate, account }: SelectSpendAddress): Promise<{
+    selectedSpendAddress: string;
+    selectedSpendPubkey: string;
+    addressType: AddressType;
+}>;
 export declare function sanitizeFeeRate(provider: Provider, feeRate: number): Promise<number>;
 export declare function psbtTxAddressTypes({ psbt, network }: {
     psbt: bitcoin.Psbt;

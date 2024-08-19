@@ -1,8 +1,9 @@
 import { FormattedUtxo, addressSpendableUtxos } from '../utxo/utxo';
 import { Provider } from "provider";
-import { AddressType, BidAffordabilityCheck, BuiltPsbt, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, UtxosToCoverAmount, marketplaceName } from "../shared/interface";
+import { AddressType, BidAffordabilityCheck, BuiltPsbt, ConditionalInput, MarketplaceOffer, Marketplaces, PsbtBuilder, SelectSpendAddress, UtxosToCoverAmount, marketplaceName } from "../shared/interface";
 import { assertHex, getOutputFormat, getTxSizeByAddressType } from "../shared/utils";
 import * as bitcoin from 'bitcoinjs-lib'
+import { getAddressType } from '..';
 
 
 export const maxTxSizeForOffers: number = 482
@@ -126,6 +127,39 @@ export async function broadcastSignedTx(psbt: string, provider: Provider){
     const txId = txPayload.txid
     return [txId]
 
+}
+
+export async function selectSpendAddress ({offers, provider, feeRate, account}: SelectSpendAddress) {
+    feeRate = await sanitizeFeeRate(provider, feeRate);
+    const estimatedCost = getBidCostEstimate(offers, feeRate);
+    for (let i = 0; i < account.spendStrategy.addressOrder.length; i++) {
+        if (
+            account.spendStrategy.addressOrder[i] === 'taproot' ||
+            account.spendStrategy.addressOrder[i] === 'nativeSegwit'
+        ) {
+            const address =
+                account[account.spendStrategy.addressOrder[i]].address
+            let pubkey: string =
+                account[this.account.spendStrategy.addressOrder[i]].pubkey
+            if (await canAddressAffordBid({ address, estimatedCost, offers, provider})) {
+                const selectedSpendAddress = address
+                const selectedSpendPubkey = pubkey
+                const addressType = getAddressType(selectedSpendAddress)
+                return {
+                    selectedSpendAddress,
+                    selectedSpendPubkey,
+                    addressType
+                }
+            }
+        }
+        if (i === account.spendStrategy.addressOrder.length - 1) {
+            throw new Error(
+                    'Not enough (confirmed) satoshis available to buy marketplace offers, need  ' +
+                    estimatedCost +
+                    ' sats'
+                )
+        }
+    }
 }
 
 export async function sanitizeFeeRate(provider: Provider, feeRate: number): Promise<number> {
