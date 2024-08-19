@@ -96,5 +96,5 @@ export declare function okxSwap({ address, offer, receiveAddress, feeRate, pubKe
     assetType: AssetType;
     provider: Provider;
     signer: Signer;
-}): Promise<void>;
+}): Promise<any>;
 export {};

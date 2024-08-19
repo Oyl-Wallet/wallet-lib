@@ -2,7 +2,7 @@ import * as bitcoin from 'bitcoinjs-lib'
 import { FormattedUtxo, addressSpendableUtxos } from '../utxo/utxo';
 import { Signer } from '../signer'
 import { Provider } from 'provider'
-import { getAddressType, timeout, waitForTransaction } from ".."
+import { getAddressType, timeout } from ".."
 import {
     genSignedBuyingPSBTWithoutListSignature,
     generateUnsignedBuyingPsbt,
@@ -380,15 +380,14 @@ export async function okxSwap ({
     signer: Signer
 }) {
     const addressType = getAddressType(address);
-    const checkAddressPrepared = await prepareAddressForOkxPsbt({address, provider, pubKey, feeRate, addressType})
-    if (checkAddressPrepared != null){
-        const signedPsbtPayload = await signer.signAllInputs({
-            rawPsbt: checkAddressPrepared,
+    const psbtForDummyUtxos = await prepareAddressForOkxPsbt({address, provider, pubKey, feeRate, addressType})
+    if (psbtForDummyUtxos != null){
+        const {signedPsbt} = await signer.signAllInputs({
+            rawPsbt: psbtForDummyUtxos,
             finalize: true,
         })
-        const prepTxId = await broadcastSignedTx(signedPsbtPayload.signedPsbt, provider)
-        console.log("preptxid", prepTxId)
-        await timeout(30000)
+        const {txId} = await provider.pushPsbt({psbtBase64: signedPsbt})
+        console.log("preptxid", txId)
     }
     const unsignedBid: UnsignedOkxBid = {
         offerId: offer.offerId,
@@ -408,21 +407,24 @@ export async function okxSwap ({
         network,
         pubKey,
         addressType,
-        signer,
         sellerPsbt,
         orderPrice: offer.totalPrice,
         assetType
     })
 
+   const {signedPsbt} = await signer.signAllInputs({
+        rawPsbt: buyerPsbt,
+        finalize: false
+    })
+
+    const mergedPsbt = mergeSignedPsbt(signedPsbt, [sellerPsbt]) 
     const transaction = await submitSignedPsbt({
         fromAddress: address,
-        psbt: buyerPsbt,
+        psbt: mergedPsbt,
         assetType,
         provider,
         offer
     })
-
-
-   console.log(transaction)
+    if (transaction.statusCode == 200)return transaction.data
 
 }
