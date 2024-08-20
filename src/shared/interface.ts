@@ -152,6 +152,18 @@ export interface SelectSpendAddress {
   account: Account
 }
 
+export enum Providers {
+  bcoin,
+  oyl,
+  electrum,
+}
+
+export interface MarketplaceOffers {
+  offerId: string
+  marketplace: string
+  ticker: string
+}
+
 export interface MarketplaceOffer {
   ticker: string
   offerId: any

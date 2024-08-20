@@ -139,6 +139,16 @@ export interface SelectSpendAddress {
     feeRate: number;
     account: Account;
 }
+export declare enum Providers {
+    bcoin = 0,
+    oyl = 1,
+    electrum = 2
+}
+export interface MarketplaceOffers {
+    offerId: string;
+    marketplace: string;
+    ticker: string;
+}
 export interface MarketplaceOffer {
     ticker: string;
     offerId: any;
