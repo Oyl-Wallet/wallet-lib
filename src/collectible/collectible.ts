@@ -5,7 +5,7 @@ import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
 import { Account } from '../account/account'
 import { formatInputsToSign } from '../shared/utils'
 import { OylTransactionError } from '../errors'
-import { getAddressType } from '../transactions'
+import { getAddressType } from '../shared/utils'
 import { Signer } from '../signer'
 import { OrdCollectibleData } from '../shared/interface'
 
@@ -224,22 +224,25 @@ export const findCollectible = async ({
 }
 
 export const send = async ({
-  account,
-  inscriptionId,
-  provider,
-  inscriptionAddress = account.taproot.address,
   toAddress,
+  inscriptionId,
+  inscriptionAddress,
   feeRate,
+  account,
+  provider,
   signer,
 }: {
-  account: Account
-  inscriptionId: string
-  provider: Provider
-  inscriptionAddress?: string
   toAddress: string
+  inscriptionId: string
+  inscriptionAddress?: string
   feeRate?: number
+  account: Account
+  provider: Provider
   signer: Signer
 }) => {
+  if (!inscriptionAddress) {
+    inscriptionAddress = account.taproot.address
+  }
   const { fee } = await actualFee({
     account,
     inscriptionId,

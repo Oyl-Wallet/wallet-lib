@@ -10,6 +10,7 @@ import {
   ToSignInput,
   TxInput,
   UnspentOutput,
+  Utxo,
 } from './interface'
 import BigNumber from 'bignumber.js'
 import { maximumScriptBytes } from './constants'
@@ -23,6 +24,8 @@ import { isTaprootInput, toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
 import { SandshrewBitcoinClient } from '../rpclient/sandshrew'
 import { EsploraRpc } from '../rpclient/esplora'
 import { Provider } from '../provider/provider'
+
+import { addressFormats } from '@sadoprotocol/ordit-sdk'
 
 bitcoin.initEccLib(ecc)
 
@@ -298,72 +301,6 @@ export function calculateAmountGatheredUtxo(utxoArray: Utxo[]) {
   )
 }
 
-export const formatOptionsToSignInputs = async ({
-  _psbt,
-  pubkey,
-  segwitPubkey,
-  segwitAddress,
-  taprootAddress,
-  network,
-}: {
-  _psbt: bitcoin.Psbt
-  pubkey: string
-  segwitPubkey: string
-  segwitAddress: string
-  taprootAddress: string
-  network: bitcoin.Network
-}) => {
-  let toSignInputs: ToSignInput[] = []
-  let index = 0
-  for await (const v of _psbt.data.inputs) {
-    let script: any = null
-    let value = 0
-    const isSigned = v.finalScriptSig || v.finalScriptWitness
-    const lostInternalPubkey = !v.tapInternalKey
-    if (v.witnessUtxo) {
-      script = v.witnessUtxo.script
-      value = v.witnessUtxo.value
-    } else if (v.nonWitnessUtxo) {
-      const tx = bitcoin.Transaction.fromBuffer(v.nonWitnessUtxo)
-      const output = tx.outs[_psbt.txInputs[index].index]
-      script = output.script
-      value = output.value
-    }
-
-    if (!isSigned || lostInternalPubkey) {
-      const tapInternalKey = assertHex(Buffer.from(pubkey, 'hex'))
-      const p2tr = bitcoin.payments.p2tr({
-        internalPubkey: tapInternalKey,
-        network: network,
-      })
-      if (
-        v.witnessUtxo?.script.toString('hex') == p2tr.output?.toString('hex')
-      ) {
-        v.tapInternalKey = tapInternalKey
-        if (v.tapInternalKey) {
-          toSignInputs.push({
-            index: index,
-            publicKey: pubkey,
-            sighashTypes: v.sighashType ? [v.sighashType] : undefined,
-          })
-        }
-      }
-    }
-
-    if (script && !isSigned && !isTaprootInput(v)) {
-      toSignInputs.push({
-        index: index,
-        publicKey: segwitPubkey,
-        sighashTypes: v.sighashType ? [v.sighashType] : undefined,
-      })
-    }
-
-    index++
-  }
-
-  return toSignInputs
-}
-
 export const formatInputsToSign = async ({
   _psbt,
   senderPublicKey,
@@ -613,6 +550,36 @@ export const callBTCRPCEndpoint = async (
     })
 }
 
+export function getAddressType(address: string): AddressType | null {
+  if (
+    addressFormats.mainnet.p2pkh.test(address) ||
+    addressFormats.testnet.p2pkh.test(address) ||
+    addressFormats.regtest.p2pkh.test(address)
+  ) {
+    return AddressType.P2PKH
+  } else if (
+    addressFormats.mainnet.p2tr.test(address) ||
+    addressFormats.testnet.p2tr.test(address) ||
+    addressFormats.regtest.p2tr.test(address)
+  ) {
+    return AddressType.P2TR
+  } else if (
+    addressFormats.mainnet.p2sh.test(address) ||
+    addressFormats.testnet.p2sh.test(address) ||
+    addressFormats.regtest.p2sh.test(address)
+  ) {
+    return AddressType.P2SH_P2WPKH
+  } else if (
+    addressFormats.mainnet.p2wpkh.test(address) ||
+    addressFormats.testnet.p2wpkh.test(address) ||
+    addressFormats.regtest.p2wpkh.test(address)
+  ) {
+    return AddressType.P2WPKH
+  } else {
+    return null
+  }
+}
+
 export async function waitForTransaction({
   txId,
   sandshrewBtcClient,
@@ -628,6 +595,7 @@ export async function waitForTransaction({
       const result = await sandshrewBtcClient.bitcoindRpc.getMemPoolEntry(txId)
 
       if (result) {
+        await delay(5000)
         break
       }
 
@@ -752,134 +720,6 @@ export const taprootFormat = (
   return {
     data: p2tr,
   }
-}
-
-export const sendCollectible = async ({
-  inscriptionId,
-  inputAddress,
-  outputAddress,
-  taprootPublicKey,
-  segwitPublicKey,
-  segwitAddress,
-  isDry,
-  segwitSigner,
-  taprootSigner,
-  payFeesWithSegwit = false,
-  feeRate,
-  network,
-  taprootUtxos,
-  segwitUtxos,
-  metaOutputValue,
-  sandshrewBtcClient,
-}: {
-  inscriptionId: string
-  inputAddress: string
-  outputAddress: string
-  mnemonic: string
-  taprootPublicKey: string
-  segwitPublicKey: string
-  segwitAddress: string
-  isDry?: boolean
-  feeRate: number
-  segwitSigner: any
-  taprootSigner: any
-  payFeesWithSegwit?: boolean
-  network: 'testnet' | 'main' | 'regtest'
-  taprootUtxos: Utxo[]
-  segwitUtxos: Utxo[]
-  metaOutputValue: number
-  sandshrewBtcClient: SandshrewBitcoinClient
-}) => {
-  const psbt = new bitcoin.Psbt({ network: getNetwork(network) })
-
-  const utxosToSend = await insertCollectibleUtxo({
-    taprootUtxos: taprootUtxos,
-    inscriptionId: inscriptionId,
-    toAddress: outputAddress,
-    psbt: psbt,
-  })
-
-  psbt.txOutputs[0].value = metaOutputValue
-
-  await getUtxosForFees({
-    payFeesWithSegwit: payFeesWithSegwit,
-    psbtTx: psbt,
-    taprootUtxos: taprootUtxos,
-    segwitUtxos: segwitUtxos,
-    segwitAddress: segwitAddress,
-    feeRate: feeRate,
-    taprootAddress: inputAddress,
-    segwitPubKey: segwitPublicKey,
-    utxosToSend: utxosToSend,
-    network: getNetwork(network),
-    fromAddress: inputAddress,
-  })
-
-  const toSignInputs: ToSignInput[] = await formatOptionsToSignInputs({
-    _psbt: psbt,
-    pubkey: taprootPublicKey,
-    segwitPubkey: segwitPublicKey,
-    segwitAddress: segwitAddress,
-    taprootAddress: inputAddress,
-    network: getNetwork(network),
-  })
-
-  const signedPsbt = await signInputs(
-    psbt,
-    toSignInputs,
-    taprootPublicKey,
-    segwitPublicKey,
-    segwitSigner,
-    taprootSigner
-  )
-
-  signedPsbt.finalizeAllInputs()
-
-  const rawTx = signedPsbt.extractTransaction().toHex()
-  const txId = signedPsbt.extractTransaction().getId()
-
-  const [result] = await sandshrewBtcClient.bitcoindRpc.testMemPoolAccept([
-    rawTx,
-  ])
-
-  if (!result.allowed) {
-    throw new Error(result['reject-reason'])
-  }
-
-  if (!isDry) {
-    await sandshrewBtcClient.bitcoindRpc.sendRawTransaction(rawTx)
-  }
-
-  return { txId, rawTx }
-}
-
-const insertCollectibleUtxo = async ({
-  taprootUtxos,
-  inscriptionId,
-  toAddress,
-  psbt,
-}: {
-  taprootUtxos: any[]
-  inscriptionId: string
-  toAddress: string
-  psbt: bitcoin.Psbt
-}) => {
-  const { metaUtxos } = taprootUtxos.reduce(
-    (acc, utxo) => {
-      utxo.inscriptions.length
-        ? acc.metaUtxos.push(utxo)
-        : acc.nonMetaUtxos.push(utxo)
-      return acc
-    },
-    { metaUtxos: [], nonMetaUtxos: [] }
-  )
-
-  return await addInscriptionUtxo({
-    metaUtxos: metaUtxos,
-    inscriptionId: inscriptionId,
-    toAddress: toAddress,
-    psbtTx: psbt,
-  })
 }
 
 export const filterTaprootUtxos = async ({

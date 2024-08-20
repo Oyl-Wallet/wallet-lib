@@ -1,16 +1,19 @@
 import { assertHex, getSatpointFromUtxo } from '../shared/utils'
-import { getAddressType } from '../transactions'
+import { getAddressType } from '../shared/utils'
 import { MarketplaceBuy, AddressType } from '../shared/interface'
 import * as bitcoin from 'bitcoinjs-lib'
+import { OylApiClient } from 'apiclient'
+import { EsploraRpc } from 'rpclient/esplora'
+import { SandshrewBitcoinClient } from 'rpclient/sandshrew'
 
 export class BuildMarketplaceTransaction {
   public walletAddress: string
   public pubKey: string
-  public api
-  public esplora
+  public api: OylApiClient
+  public esplora: EsploraRpc
   public psbtBase64: string
   public orderPrice: number
-  public sandshrew
+  public sandshrew: SandshrewBitcoinClient
   public makersAddress: string | null
   public takerScript: string
   public network: bitcoin.Network
@@ -25,7 +28,7 @@ export class BuildMarketplaceTransaction {
     psbtBase64,
     price,
     provider,
-    feeRate
+    feeRate,
   }: MarketplaceBuy) {
     this.walletAddress = address
     this.pubKey = pubKey
@@ -149,7 +152,8 @@ export class BuildMarketplaceTransaction {
 
     const amountRetrieved = this.calculateAmountGathered(retrievedUtxos)
     const maxTxSize: number = 350 //max of three taproot inputs, two outputs
-    const remainder = amountRetrieved  - (1200 + parseInt((maxTxSize * this.feeRate).toFixed(0)))
+    const remainder =
+      amountRetrieved - (1200 + parseInt((maxTxSize * this.feeRate).toFixed(0)))
     prepareTx.addOutput({
       address: this.walletAddress,
       value: 600,

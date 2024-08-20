@@ -36,6 +36,30 @@ export declare const mnemonicToAccount: ({ mnemonic, opts, }: {
     mnemonic?: string;
     opts?: MnemonicToAccountOptions;
 }) => Account;
+export declare const generateWallet: ({ mnemonic, opts, }: {
+    mnemonic?: string;
+    opts: MnemonicToAccountOptions;
+}) => {
+    taproot: {
+        pubkey: string;
+        pubKeyXOnly: string;
+        address: string;
+    };
+    nativeSegwit: {
+        pubkey: string;
+        address: string;
+    };
+    nestedSegwit: {
+        pubkey: string;
+        address: string;
+    };
+    legacy: {
+        pubkey: string;
+        address: string;
+    };
+    spendStrategy: SpendStrategy;
+    network: bitcoin.networks.Network;
+};
 export declare const getWalletPrivateKeys: ({ mnemonic, opts, }: {
     mnemonic: string;
     opts?: MnemonicToAccountOptions;

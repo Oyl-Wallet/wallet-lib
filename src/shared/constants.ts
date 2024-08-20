@@ -1,6 +1,5 @@
-import { MnemonicToAccountOptions } from '../account/account'
-import { Provider, ProviderConstructorArgs } from '../provider'
-import { Network, NetworkOptions } from './interface'
+import { MnemonicToAccountOptions } from '..'
+import { Provider, ProviderConstructorArgs } from '..'
 import * as bitcoin from 'bitcoinjs-lib'
 import * as dotenv from 'dotenv'
 dotenv.config()
@@ -28,7 +27,7 @@ export const Opts: MnemonicToAccountOptions = {
   network: bitcoin.networks.bitcoin,
   index: 0,
   spendStrategy: {
-    changeAddress: 'taproot',
+    changeAddress: 'nativeSegwit',
     addressOrder: ['nativeSegwit', 'nestedSegwit', 'taproot', 'legacy'],
     utxoSortGreatestToLeast: true,
   },
@@ -47,38 +46,3 @@ export const getBrc20Data = ({
   mediaContent: `{"p":"brc-20","op":"transfer","tick":"${tick}","amt":"${amount}"}`,
   mediaType: 'text/plain',
 })
-
-export const defaultNetworkOptions: Record<Network, NetworkOptions> = {
-  mainnet: {
-    baseUrl: 'https://mainnet.sandshrew.io',
-    version: 'v1',
-    projectId: process.env.SANDSHREW_PROJECT_ID,
-    network: 'mainnet',
-    apiUrl: 'https://api.oyl.gg',
-    opiUrl: 'https://mainnet-opi.sandshrew.io/v1',
-  },
-  testnet: {
-    baseUrl: 'https://testnet.sandshrew.io',
-    version: 'v1',
-    projectId: process.env.SANDSHREW_PROJECT_ID,
-    network: 'testnet',
-    apiUrl: 'https://testnet-api.oyl.gg',
-    opiUrl: 'https://testnet-opi.sandshrew.io/v1',
-  },
-  regtest: {
-    baseUrl: 'http://localhost:3000',
-    version: 'v1',
-    projectId: 'regtest',
-    network: 'regtest',
-    apiUrl: 'https://mainnet-api.oyl.gg',
-    opiUrl: 'http://localhost:3000',
-  },
-  signet: {
-    baseUrl: 'https://signet.sandshrew.io',
-    version: 'v1',
-    projectId: process.env.SANDSHREW_PROJECT_ID,
-    network: 'signet',
-    apiUrl: 'https://signet-api.oyl.gg',
-    opiUrl: 'https://testnet-opi.sandshrew.io/v1',
-  },
-}

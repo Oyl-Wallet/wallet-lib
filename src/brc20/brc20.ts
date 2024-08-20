@@ -1,12 +1,10 @@
 import { OylTransactionError } from '../errors'
 import { Provider } from '../provider/provider'
 import * as bitcoin from 'bitcoinjs-lib'
-import { EsploraUtxo, FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
+import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
 import {
-  ECPair,
   calculateTaprootTxSize,
   createInscriptionScript,
-  delay,
   formatInputsToSign,
   getFee,
   getOutputValueByVOutIndex,
@@ -16,9 +14,8 @@ import {
 import { Account } from '../account/account'
 import { minimumFee } from '../btc/btc'
 import { toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
-import { ECPairInterface } from 'ecpair'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341'
-import { getAddressType } from '../transactions'
+import { getAddressType } from '../shared/utils'
 import { Signer } from '../signer'
 
 export const transferEstimate = async ({
@@ -154,7 +151,7 @@ export const commit = async ({
   amount,
   feeRate,
   account,
-  taprootPrivateKey,
+  tweakedTaprootPublicKey,
   provider,
   fee,
   finalSendFee,
@@ -163,7 +160,7 @@ export const commit = async ({
   amount: number
   feeRate: number
   account: Account
-  taprootPrivateKey: string
+  tweakedTaprootPublicKey: Buffer
   provider: Provider
   fee?: number
   finalSendFee?: number
@@ -196,19 +193,15 @@ export const commit = async ({
       spendAmount: finalFee + finalSendFee,
     })
 
-    const taprootKeyPair: ECPairInterface = ECPair.fromPrivateKey(
-      Buffer.from(taprootPrivateKey, 'hex')
+    const script = createInscriptionScript(
+      toXOnly(tweakedTaprootPublicKey),
+      content
     )
-
-    const tweakedTaprootKeyPair: Buffer = toXOnly(
-      tweakSigner(taprootKeyPair).publicKey
-    )
-    const script = createInscriptionScript(tweakedTaprootKeyPair, content)
 
     const outputScript = bitcoin.script.compile(script)
 
     const inscriberInfo = bitcoin.payments.p2tr({
-      internalPubkey: tweakedTaprootKeyPair,
+      internalPubkey: toXOnly(tweakedTaprootPublicKey),
       scriptTree: { output: outputScript },
       network: provider.network,
     })
@@ -310,7 +303,7 @@ export const reveal = async ({
   receiverAddress,
   script,
   feeRate,
-  taprootPrivateKey,
+  tweakedTaprootKeyPair,
   provider,
   fee = 0,
   commitTxId,
@@ -318,7 +311,7 @@ export const reveal = async ({
   receiverAddress: string
   script: Buffer
   feeRate: number
-  taprootPrivateKey: string
+  tweakedTaprootKeyPair: bitcoin.Signer
   provider: Provider
   fee?: number
   commitTxId: string
@@ -345,24 +338,13 @@ export const reveal = async ({
     })
 
     if (!commitTxOutput) {
-      throw new Error('ERROR GETTING FIRST INPUT VALUE')
+      throw new Error('Error getting vin #0 value')
     }
-
-    const taprootKeyPair: ECPairInterface = ECPair.fromPrivateKey(
-      Buffer.from(taprootPrivateKey, 'hex')
-    )
-
-    const tweakedTaprootKeyPair = tweakSigner(taprootKeyPair, {
-      network: provider.network,
-    })
-    const tweakedPubKey: Buffer = toXOnly(
-      tweakSigner(taprootKeyPair, { network: provider.network }).publicKey
-    )
 
     const p2pk_redeem = { output: script }
 
     const { output, witness } = bitcoin.payments.p2tr({
-      internalPubkey: tweakedPubKey,
+      internalPubkey: toXOnly(tweakedTaprootKeyPair.publicKey),
       scriptTree: p2pk_redeem,
       redeem: p2pk_redeem,
       network: provider.network,
@@ -522,17 +504,17 @@ export const transfer = async ({
 }
 
 export const send = async ({
+  toAddress,
   ticker,
   amount,
-  toAddress,
   account,
   provider,
   feeRate,
   signer,
 }: {
+  toAddress: string
   ticker: string
   amount: number
-  toAddress: string
   feeRate: number
   account: Account
   provider: Provider
@@ -545,12 +527,17 @@ export const send = async ({
     account: account,
     provider: provider,
   })
+  const tweakedTaprootKeyPair: bitcoin.Signer = tweakSigner(
+    signer.taprootKeyPair,
+    { network: provider.network }
+  )
+  const tweakedTaprootPublicKey = toXOnly(tweakedTaprootKeyPair.publicKey)
 
   const { psbt: dryCommitPsbt } = await commit({
     ticker: ticker,
     amount: amount,
     feeRate: feeRate,
-    taprootPrivateKey: signer.taprootKeyPair.privateKey.toString('hex'),
+    tweakedTaprootPublicKey,
     account: account,
     provider: provider,
     finalSendFee: estimate.fee,
@@ -571,7 +558,7 @@ export const send = async ({
     ticker: ticker,
     amount: amount,
     feeRate: feeRate,
-    taprootPrivateKey: signer.taprootKeyPair.privateKey.toString('hex'),
+    tweakedTaprootPublicKey,
     account: account,
     provider: provider,
     finalSendFee: estimate.fee,
@@ -590,7 +577,7 @@ export const send = async ({
   successTxIds.push(commitTxId)
   const { psbt: revealPsbt } = await reveal({
     feeRate: feeRate,
-    taprootPrivateKey: signer.taprootKeyPair.privateKey.toString('hex'),
+    tweakedTaprootKeyPair,
     provider: provider,
     script: script,
     commitTxId: commitTxId,
@@ -605,7 +592,7 @@ export const send = async ({
 
   const { psbt: finalRevealPsbt } = await reveal({
     feeRate: feeRate,
-    taprootPrivateKey: signer.taprootKeyPair.privateKey.toString('hex'),
+    tweakedTaprootKeyPair,
     provider: provider,
     script: script,
     commitTxId: commitTxId,
@@ -627,8 +614,6 @@ export const send = async ({
     txId: revealTxId,
     sandshrewBtcClient: provider.sandshrew,
   })
-
-  await delay(5000)
 
   const { psbt: transferPsbt } = await transfer({
     feeRate: feeRate,

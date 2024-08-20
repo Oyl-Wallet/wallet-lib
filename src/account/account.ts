@@ -80,7 +80,7 @@ export const mnemonicToAccount = ({
   return account as Account
 }
 
-const generateWallet = ({
+export const generateWallet = ({
   mnemonic,
   opts,
 }: {

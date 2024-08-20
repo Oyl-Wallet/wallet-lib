@@ -14,8 +14,8 @@ export declare const createPsbt: ({ toAddress, amount, feeRate, account, provide
 }>;
 export declare const send: ({ toAddress, amount, feeRate, account, provider, signer, }: {
     toAddress: string;
-    feeRate: number;
     amount: number;
+    feeRate: number;
     account: Account;
     provider: Provider;
     signer: Signer;

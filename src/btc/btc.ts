@@ -5,7 +5,7 @@ import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
 import { calculateTaprootTxSize, formatInputsToSign } from '../shared/utils'
 import { Account } from '../account/account'
 import { Signer } from '../signer'
-import { getAddressType } from '../transactions'
+import { getAddressType } from '../shared/utils'
 
 export const createPsbt = async ({
   toAddress,
@@ -146,8 +146,8 @@ export const send = async ({
   signer,
 }: {
   toAddress: string
-  feeRate: number
   amount: number
+  feeRate: number
   account: Account
   provider: Provider
   signer: Signer

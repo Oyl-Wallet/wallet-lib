@@ -1,19 +1,22 @@
 import { MarketplaceBuy, AddressType } from '../shared/interface';
 import * as bitcoin from 'bitcoinjs-lib';
+import { OylApiClient } from 'apiclient';
+import { EsploraRpc } from 'rpclient/esplora';
+import { SandshrewBitcoinClient } from 'rpclient/sandshrew';
 export declare class BuildMarketplaceTransaction {
     walletAddress: string;
     pubKey: string;
-    api: any;
-    esplora: any;
+    api: OylApiClient;
+    esplora: EsploraRpc;
     psbtBase64: string;
     orderPrice: number;
-    sandshrew: any;
+    sandshrew: SandshrewBitcoinClient;
     makersAddress: string | null;
     takerScript: string;
     network: bitcoin.Network;
     addressType: AddressType;
     receiveAddress: string;
-    constructor({ address, pubKey, receiveAddress, psbtBase64, price, wallet, }: MarketplaceBuy);
+    constructor({ address, pubKey, receiveAddress, psbtBase64, price, provider, }: MarketplaceBuy);
     getUTXOsToCoverAmount(amountNeeded: number, inscriptionLocs?: string[]): Promise<any>;
     isWalletPrepared(): Promise<boolean>;
     prepareWallet(): Promise<{

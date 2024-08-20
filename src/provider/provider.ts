@@ -4,8 +4,7 @@ import { OrdRpc } from '../rpclient/ord'
 import { Opi } from '../rpclient/opi'
 import { OylApiClient } from '../apiclient'
 import * as bitcoin from 'bitcoinjs-lib'
-import { waitForTransaction } from '../shared/utils'
-import { defaultNetworkOptions } from '../shared/constants'
+import { waitForTransaction } from '..'
 
 export type ProviderConstructorArgs = {
   url: string
@@ -15,6 +14,48 @@ export type ProviderConstructorArgs = {
   version?: string
   apiUrl?: string
   opiUrl?: string
+}
+
+export const defaultNetworkOptions = (networkType:string) => {
+  switch(networkType) {
+    case('mainnet'):
+        return {baseUrl: 'https://mainnet.sandshrew.io',
+          version: 'v1',
+          projectId: process.env.SANDSHREW_PROJECT_ID,
+          network: 'mainnet',
+          apiUrl: 'https://api.oyl.gg',
+          opiUrl: 'https://mainnet-opi.sandshrew.io/v1'
+      }
+    case('testnet'):
+      return {
+        baseUrl: 'https://testnet.sandshrew.io',
+          version: 'v1',
+          projectId: process.env.SANDSHREW_PROJECT_ID,
+          network: 'testnet',
+          apiUrl: 'https://testnet-api.oyl.gg',
+          opiUrl: 'https://testnet-opi.sandshrew.io/v1',
+      }
+      case('regtest'):
+        return {
+            baseUrl: 'http://localhost:3000',
+          version: 'v1',
+          projectId: 'regtest',
+          network: 'regtest',
+          apiUrl: 'https://mainnet-api.oyl.gg',
+          opiUrl: 'http://localhost:3000',
+      }
+      case('signet'):
+        return {
+          baseUrl: 'https://signet.sandshrew.io',
+          version: 'v1',
+          projectId: process.env.SANDSHREW_PROJECT_ID,
+          network: 'signet',
+          apiUrl: 'https://signet-api.oyl.gg',
+          opiUrl: 'https://testnet-opi.sandshrew.io/v1',
+      }
+      default:
+        throw new Error(`Invalid network specified ${networkType}`)
+  }
 }
 
 export class Provider {
@@ -49,11 +90,11 @@ export class Provider {
     this.esplora = new EsploraRpc(masterUrl)
     this.ord = new OrdRpc(masterUrl)
     this.opi = new Opi(
-      opiUrl ? opiUrl : defaultNetworkOptions[networkType].opiUrl
+      opiUrl ? opiUrl : defaultNetworkOptions(networkType).opiUrl
     )
     this.api = new OylApiClient({
       network: networkType,
-      host: apiUrl ? apiUrl : defaultNetworkOptions[networkType].apiUrl,
+      host: apiUrl ? apiUrl : defaultNetworkOptions(networkType).apiUrl,
       testnet: isTestnet ? true : null,
       regtest: isRegtest ? true : null,
       apiKey: projectId,

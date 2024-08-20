@@ -2,9 +2,9 @@ import fetch from 'node-fetch'
 import { SwapBrcBid, SignedBid, OkxBid } from '../shared/interface'
 import {
   getAllInscriptionsByAddressRegtest,
-  getRuneOutpointsRegtest,
   getRuneBalanceRegtest,
-} from '../tests/regtestApi'
+  getRuneOutpointsRegtest,
+} from './regtestApi'
 
 /**
  * Represents the client for interacting with the Oyl API.

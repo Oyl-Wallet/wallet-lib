@@ -21,13 +21,13 @@ export declare const findCollectible: ({ address, provider, inscriptionId, }: {
     voutIndex: string;
     data: any;
 }>;
-export declare const send: ({ account, inscriptionId, provider, inscriptionAddress, toAddress, feeRate, signer, }: {
-    account: Account;
-    inscriptionId: string;
-    provider: Provider;
-    inscriptionAddress?: string;
+export declare const send: ({ toAddress, inscriptionId, inscriptionAddress, feeRate, account, provider, signer, }: {
     toAddress: string;
+    inscriptionId: string;
+    inscriptionAddress?: string;
     feeRate?: number;
+    account: Account;
+    provider: Provider;
     signer: Signer;
 }) => Promise<{
     txId: string;

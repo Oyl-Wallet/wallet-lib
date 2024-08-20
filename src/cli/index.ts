@@ -3,22 +3,23 @@ import {
   accountSpendableUtxos,
   addressSpendableUtxos,
   availableBalance,
-} from '../utxo/utxo'
-import * as btc from '../btc/btc'
-import * as brc20 from '../brc20/brc20'
-import * as collectible from '../collectible/collectible'
-import * as rune from '../rune/rune'
+} from '../utxo'
+import * as btc from '../btc'
+import * as brc20 from '../brc20'
+import * as collectible from '../collectible'
+import * as rune from '../rune'
 
 import {
   generateMnemonic,
   getWalletPrivateKeys,
   mnemonicToAccount,
-} from '../account/account'
+  ProviderConstructorArgs,
+} from '..'
 import * as bitcoin from 'bitcoinjs-lib'
-import { Provider } from '../provider/provider'
-import { Signer } from '../signer/index'
-import { Trade } from '../trade'
-import { AssetType, MarketplaceOffers } from '../shared/interface'
+import { Provider } from '..'
+import { Signer } from '..'
+import { Trade } from '..'
+import { AssetType, MarketplaceOffers } from '..'
 import { OylTransactionError } from '../errors'
 
 const defaultProvider = {
@@ -28,13 +29,15 @@ const defaultProvider = {
     network: bitcoin.networks.bitcoin,
     networkType: 'mainnet',
     apiUrl: 'https://staging-api.oyl.gg',
+    //opiUrl: 'https://mainnet-opi.sandshrew.io/v1'
   }),
   regtest: new Provider({
     url: 'http://localhost:3000',
     projectId: 'regtest',
     network: bitcoin.networks.regtest,
-    networkType: 'mainnet',
+    networkType: 'regtest',
     apiUrl: 'https://staging-api.oyl.gg',
+    //opiUrl: 'https://mainnet-opi.sandshrew.io/v1'
   }),
 }
 

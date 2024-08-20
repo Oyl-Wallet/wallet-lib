@@ -1,17 +1,23 @@
-import { Oyl } from '../oylib'
-import { defaultNetworkOptions } from '../shared/constants'
+import * as bitcoin from 'bitcoinjs-lib'
+import { Provider } from '..'
+
 
 export const getAllInscriptionsByAddressRegtest = async (address: string) => {
-  const oyl = new Oyl(defaultNetworkOptions.regtest)
-
-  const utxosResponse = await oyl.esploraRpc.getAddressUtxo(address)
+  const oyl = new Provider({
+    url: 'http://localhost:3000',
+    projectId: 'regtest',
+    network: bitcoin.networks.regtest,
+    networkType: 'mainnet',
+    apiUrl: 'https://staging-api.oyl.gg',
+  })
+  const utxosResponse = await oyl.esplora.getAddressUtxo(address)
   const data = []
 
   const inscriptionUtxos = utxosResponse.filter((utxo) => utxo.value == 546)
 
   for (const utxo of inscriptionUtxos) {
     if (utxo.txid) {
-      const transactionDetails = await oyl.ordRpc.getTxOutput(
+      const transactionDetails = await oyl.ord.getTxOutput(
         utxo.txid + ':' + utxo.vout
       )
       const {
@@ -20,9 +26,7 @@ export const getAllInscriptionsByAddressRegtest = async (address: string) => {
         satpoint,
         content_type,
         address,
-      } = await oyl.ordRpc.getInscriptionById(
-        transactionDetails.inscriptions[0]
-      )
+      } = await oyl.ord.getInscriptionById(transactionDetails.inscriptions[0])
       if (inscription_id) {
         data.push({
           inscription_id,
@@ -42,28 +46,31 @@ export const getAllInscriptionsByAddressRegtest = async (address: string) => {
 }
 
 export const getRuneOutpointsRegtest = async (address: string) => {
-  const oyl = new Oyl(defaultNetworkOptions.regtest)
-
-  const allUtxos = await oyl.esploraRpc.getAddressUtxo(address)
+  const oyl = new Provider({
+    url: 'http://localhost:3000',
+    projectId: 'regtest',
+    network: bitcoin.networks.regtest,
+    networkType: 'mainnet',
+    apiUrl: 'https://staging-api.oyl.gg',
+  })
+  const allUtxos = await oyl.esplora.getAddressUtxo(address)
   const data = []
 
   for (const utxo of allUtxos) {
     if (utxo.txid) {
       const output = utxo.txid + ':' + utxo.vout
-      const txDetails = await oyl.ordRpc.getTxOutput(
-        output
-      )
+      const txDetails = await oyl.ord.getTxOutput(output)
       for (let i = 0; i < txDetails.runes.length; i++) {
         const runeName = txDetails.runes[i][0]
-        const { id } = await oyl.ordRpc.getRuneByName(runeName)
+        const { id } = await oyl.ord.getRuneByName(runeName)
         const runeAmount = txDetails.runes[i][1].amount
-        const index = data.findIndex((rune) => rune.rune_name == runeName);
-        if ( index != -1) { 
+        const index = data.findIndex((rune) => rune.rune_name == runeName)
+        if (index != -1) {
           // update balance
-          data[index].total_balance += runeAmount;
-        } else {  
+          data[index].total_balance += runeAmount
+        } else {
           // create new record
-          const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid)
+          const txInfo = await oyl.esplora.getTxInfo(utxo.txid)
           data.push({
             pkscript: txInfo.vout[utxo.vout].scriptpubkey,
             wallet_addr: address,
@@ -72,7 +79,7 @@ export const getRuneOutpointsRegtest = async (address: string) => {
             balances: [runeAmount],
             rune_names: [runeName],
             spaced_rune_names: [runeName],
-            decimals: [txDetails.runes[i][1].divisibility]
+            decimals: [txDetails.runes[i][1].divisibility],
           })
         }
       }
@@ -84,31 +91,32 @@ export const getRuneOutpointsRegtest = async (address: string) => {
   }
 }
 
-
 export const getRuneBalanceRegtest = async (address: string) => {
-  const oyl = new Oyl(defaultNetworkOptions.regtest)
-
-  const allUtxos = await oyl.esploraRpc.getAddressUtxo(address)
+  const oyl = new Provider({
+    url: 'http://localhost:3000',
+    projectId: 'regtest',
+    network: bitcoin.networks.regtest,
+    networkType: 'mainnet',
+    apiUrl: 'https://staging-api.oyl.gg',
+  })
+  const allUtxos = await oyl.esplora.getAddressUtxo(address)
   const data = []
 
   for (const utxo of allUtxos) {
     if (utxo.txid) {
       const output = utxo.txid + ':' + utxo.vout
-      const txDetails = await oyl.ordRpc.getTxOutput(
-        output
-      )
+      const txDetails = await oyl.ord.getTxOutput(output)
       if (txDetails.runes.length > 0) {
-        const runeName = txDetails.runes[0][0];
-        const { id } = await oyl.ordRpc.getRuneByName(runeName);
+        const runeName = txDetails.runes[0][0]
+        const { id } = await oyl.ord.getRuneByName(runeName)
         const runeAmount = txDetails.runes[0][1].amount
-        const index = data.findIndex((rune) => rune.rune_name == runeName);
+        const index = data.findIndex((rune) => rune.rune_name == runeName)
         if (index != -1) {
           // update balance
-          data[index].total_balance += runeAmount;
-        }
-        else {
+          data[index].total_balance += runeAmount
+        } else {
           // create new record
-          const txInfo = await oyl.esploraRpc.getTxInfo(utxo.txid);
+          const txInfo = await oyl.esplora.getTxInfo(utxo.txid)
           data.push({
             pkscript: txInfo.vout[1].scriptpubkey,
             wallet_addr: address,
@@ -117,8 +125,8 @@ export const getRuneBalanceRegtest = async (address: string) => {
             rune_name: runeName,
             spaced_rune_name: runeName,
             decimals: 0,
-            avg_unit_price_in_sats: null
-          });
+            avg_unit_price_in_sats: null,
+          })
         }
       }
     }

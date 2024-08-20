@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { Provider } from '../provider/provider';
+import * as bitcoin from 'bitcoinjs-lib';
 import { Account } from '../account/account';
 import { Signer } from '../signer';
 export declare const transferEstimate: ({ toAddress, feeRate, account, provider, fee, }: {
@@ -12,12 +13,12 @@ export declare const transferEstimate: ({ toAddress, feeRate, account, provider,
     psbt: string;
     fee: number;
 }>;
-export declare const commit: ({ ticker, amount, feeRate, account, taprootPrivateKey, provider, fee, finalSendFee, }: {
+export declare const commit: ({ ticker, amount, feeRate, account, tweakedTaprootPublicKey, provider, fee, finalSendFee, }: {
     ticker: string;
     amount: number;
     feeRate: number;
     account: Account;
-    taprootPrivateKey: string;
+    tweakedTaprootPublicKey: Buffer;
     provider: Provider;
     fee?: number;
     finalSendFee?: number;
@@ -26,11 +27,11 @@ export declare const commit: ({ ticker, amount, feeRate, account, taprootPrivate
     fee: number;
     script: Buffer;
 }>;
-export declare const reveal: ({ receiverAddress, script, feeRate, taprootPrivateKey, provider, fee, commitTxId, }: {
+export declare const reveal: ({ receiverAddress, script, feeRate, tweakedTaprootKeyPair, provider, fee, commitTxId, }: {
     receiverAddress: string;
     script: Buffer;
     feeRate: number;
-    taprootPrivateKey: string;
+    tweakedTaprootKeyPair: bitcoin.Signer;
     provider: Provider;
     fee?: number;
     commitTxId: string;
@@ -50,10 +51,10 @@ export declare const transfer: ({ commitChangeUtxoId, revealTxId, toAddress, fee
 }) => Promise<{
     psbt: string;
 }>;
-export declare const send: ({ ticker, amount, toAddress, account, provider, feeRate, signer, }: {
+export declare const send: ({ toAddress, ticker, amount, account, provider, feeRate, signer, }: {
+    toAddress: string;
     ticker: string;
     amount: number;
-    toAddress: string;
     feeRate: number;
     account: Account;
     provider: Provider;

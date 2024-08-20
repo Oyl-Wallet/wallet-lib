@@ -13,6 +13,14 @@ export type ProviderConstructorArgs = {
     apiUrl?: string;
     opiUrl?: string;
 };
+export declare const defaultNetworkOptions: (networkType: string) => {
+    baseUrl: string;
+    version: string;
+    projectId: string;
+    network: string;
+    apiUrl: string;
+    opiUrl: string;
+};
 export declare class Provider {
     sandshrew: SandshrewBitcoinClient;
     esplora: EsploraRpc;

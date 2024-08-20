@@ -11,7 +11,7 @@ import {
 } from '../shared/utils'
 import { OylTransactionError } from '../errors'
 import { RuneUTXO } from '../shared/interface'
-import { getAddressType } from '../transactions'
+import { getAddressType } from '../shared/utils'
 import { Signer } from '../signer'
 
 export const createSendPsbt = async ({
