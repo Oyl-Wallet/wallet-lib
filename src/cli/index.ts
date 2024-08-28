@@ -1,8 +1,7 @@
 import { Command } from 'commander'
 import {
-  accountBalance,
-  accountUtxos,
-  addressUtxos,
+  accountSpendableUtxos,
+  addressSpendableUtxos,
   availableBalance,
 } from '../utxo'
 import * as btc from '../btc'
@@ -10,12 +9,7 @@ import * as brc20 from '../brc20'
 import * as collectible from '../collectible'
 import * as rune from '../rune'
 
-import {
-  generateMnemonic,
-  getWalletPrivateKeys,
-  mnemonicToAccount,
-  utxo,
-} from '..'
+import { generateMnemonic, getWalletPrivateKeys, mnemonicToAccount } from '..'
 import * as bitcoin from 'bitcoinjs-lib'
 import { Provider } from '..'
 import { Signer } from '..'
@@ -103,7 +97,7 @@ const generateMnemonicCommand = new Command('generateMnemonic')
     console.log(mnemonic)
   })
 
-const accountUtxosToSpend = new Command('accountUtxos')
+const accountUtxosToSpend = new Command('accountSpendableUtxos')
   .description('Returns available utxos to spend')
   .requiredOption(
     '-p, --provider <provider>',
@@ -114,7 +108,7 @@ const accountUtxosToSpend = new Command('accountUtxos')
     'mnemonic you want to get private keys from'
   )
   /* @dev example call
-    oyl utxo accountUtxos -m 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' -p regtest
+    oyl utxo accountSpendableUtxos -m 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' -p regtest
   */
   .action(async (options) => {
     const provider: Provider = defaultProvider[options.provider]
@@ -124,14 +118,14 @@ const accountUtxosToSpend = new Command('accountUtxos')
       opts: { network: provider.network },
     })
     console.log(
-      await accountUtxos({
+      await accountSpendableUtxos({
         account,
         provider,
       })
     )
   })
 
-const accountAvailableBalance = new Command('balance')
+const accountAvailableBalance = new Command('availableBalance')
   .description('Returns available utxos to spend')
   .requiredOption(
     '-p, --provider <provider>',
@@ -142,7 +136,7 @@ const accountAvailableBalance = new Command('balance')
     'mnemonic you want to get private keys from'
   )
   /* @dev example call
-    oyl utxo balance -m 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'  -p regtest
+    oyl utxo availableBalance -m 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'  -p regtest
   */
   .action(async (options) => {
     const provider: Provider = defaultProvider[options.provider]
@@ -151,7 +145,7 @@ const accountAvailableBalance = new Command('balance')
       opts: { network: provider.network },
     })
     console.log(
-      await accountBalance({
+      await availableBalance({
         account,
         provider,
       })
@@ -174,7 +168,7 @@ const addressBRC20Balance = new Command('addressBRC20Balance')
     console.log((await provider.api.getBrc20sByAddress(options.address)).data)
   })
 
-const addressUtxosToSpend = new Command('addressUtxos')
+const addressUtxosToSpend = new Command('addressSpendableUtxos')
   .description('Returns available utxos to spend')
   .requiredOption(
     '-p, --provider <provider>',
@@ -185,14 +179,15 @@ const addressUtxosToSpend = new Command('addressUtxos')
     'address you want to get utxos for'
   )
   /* @dev example call
-    oyl utxo addressUtxos -a bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx -p regtest
+    oyl utxo addressSpendableUtxos -a bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx -p regtest
   */
   .action(async (options) => {
     const provider = defaultProvider[options.provider]
     console.log(
-      await addressUtxos({
+      await addressSpendableUtxos({
         address: options.address,
         provider,
+        spendAmount: 100000,
       })
     )
   })
@@ -244,7 +239,6 @@ const btcSend = new Command('send')
         network: provider.network,
       },
     })
-
     console.log(
       await btc.send({
         toAddress: options.to,
@@ -546,7 +540,7 @@ const multiCallSandshrewProviderCall = new Command('sandShrewMulticall')
   )
 
   /* @dev example call
-    oyl provider sandShrewMulticall -c '[{"method":"esplora_tx","params":["688f5c239e4e114af461dc1331d02ad5702e795daf2dcf397815e0b05cd23dbc"]},{"method":"btc_getblockcount", "params":[]}]' -p bitcoin
+    oyl provider sandShrewMulticall -c '[{"method":"esplora_tx","params":["688f5c239e4e114af461dc1331d02ad5702e795daf2dcf397815e0b05cd23dbc"]},{"method":"btc_getblockcount", "params":['']}]' -p bitcoin
   */
   .action(async (options) => {
     type Call = { method: string; params: string[] }
