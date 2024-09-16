@@ -39,6 +39,19 @@ export declare const createEtchPsbt: ({ account, symbol, cap, premine, perMintAm
 }) => Promise<{
     psbt: string;
 }>;
+export declare const createProtoBurnPsbt: ({ account, inscriptionAddress, runeId, amount, pointer, protocolTag, provider, feeRate, fee, }: {
+    account: Account;
+    inscriptionAddress: string;
+    runeId: string;
+    amount: number;
+    pointer: number;
+    protocolTag: bigint;
+    provider: Provider;
+    feeRate?: number;
+    fee?: number;
+}) => Promise<{
+    psbt: string;
+}>;
 export declare const findRuneUtxos: ({ address, greatestToLeast, provider, runeId, targetNumberOfRunes, }: {
     address: string;
     greatestToLeast: boolean;
@@ -87,6 +100,19 @@ export declare const actualEtchFee: ({ account, symbol, cap, premine, perMintAmo
 }) => Promise<{
     fee: number;
 }>;
+export declare const actualProtoburnFee: ({ account, inscriptionAddress, runeId, amount, pointer, protocolTag, provider, feeRate, signer, }: {
+    account: Account;
+    inscriptionAddress: string;
+    runeId: string;
+    amount: number;
+    pointer: number;
+    protocolTag: bigint;
+    provider: Provider;
+    feeRate?: number;
+    signer: Signer;
+}) => Promise<{
+    fee: number;
+}>;
 export declare const send: ({ toAddress, amount, runeId, inscriptionAddress, feeRate, account, provider, signer, }: {
     toAddress: string;
     amount: number;
@@ -128,6 +154,24 @@ export declare const etch: ({ symbol, cap, premine, perMintAmount, turbo, divisi
     divisibility?: number;
     runeName: string;
     account: Account;
+    provider: Provider;
+    feeRate?: number;
+    signer: Signer;
+}) => Promise<{
+    txId: string;
+    rawTx: string;
+    size: any;
+    weight: any;
+    fee: number;
+    satsPerVByte: string;
+}>;
+export declare const protoburn: ({ account, inscriptionAddress, runeId, amount, pointer, protocolTag, provider, feeRate, signer, }: {
+    account: Account;
+    inscriptionAddress: string;
+    runeId: string;
+    amount: number;
+    pointer: number;
+    protocolTag: bigint;
     provider: Provider;
     feeRate?: number;
     signer: Signer;

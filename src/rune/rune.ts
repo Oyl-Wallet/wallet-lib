@@ -4,6 +4,7 @@ import * as bitcoin from 'bitcoinjs-lib'
 import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
 import { Account } from '../account/account'
 import {
+  createProtoBurnScript,
   createRuneEtchScript,
   createRuneMintScript,
   createRuneSendScript,
@@ -328,6 +329,14 @@ export const createMintPsbt = async ({
     const changeAmount =
       gatheredUtxos.totalAmount - (finalFee + inscriptionSats)
 
+    const script = createRuneMintScript({
+      runeId,
+      mintOutPutIndex: 1,
+      pointer: 1,
+    })
+    const output = { script: script, value: 0 }
+    psbt.addOutput(output)
+
     psbt.addOutput({
       value: inscriptionSats,
       address: account.taproot.address,
@@ -337,14 +346,6 @@ export const createMintPsbt = async ({
       address: account[account.spendStrategy.changeAddress].address,
       value: changeAmount,
     })
-
-    const script = createRuneMintScript({
-      runeId,
-      mintOutPutIndex: 0,
-      pointer: 0,
-    })
-    const output = { script: script, value: 0 }
-    psbt.addOutput(output)
 
     const formattedPsbtTx = await formatInputsToSign({
       _psbt: psbt,
@@ -472,6 +473,19 @@ export const createEtchPsbt = async ({
       throw new OylTransactionError(Error('Insufficient Balance'))
     }
 
+    const script = createRuneEtchScript({
+      symbol,
+      cap,
+      premine,
+      perMintAmount,
+      turbo,
+      divisibility,
+      runeName,
+      pointer: 0,
+    })
+    const output = { script: script, value: 0 }
+    psbt.addOutput(output)
+
     const changeAmount =
       gatheredUtxos.totalAmount - (finalFee + inscriptionSats)
 
@@ -485,18 +499,231 @@ export const createEtchPsbt = async ({
       value: changeAmount,
     })
 
-    const script = createRuneEtchScript({
-      symbol,
-      cap,
-      premine,
-      perMintAmount,
-      turbo,
-      divisibility,
-      runeName,
-      pointer: 0,
+    const formattedPsbtTx = await formatInputsToSign({
+      _psbt: psbt,
+      senderPublicKey: account.taproot.pubkey,
+      network: provider.network,
+    })
+
+    return { psbt: formattedPsbtTx.toBase64() }
+  } catch (error) {
+    throw new OylTransactionError(error)
+  }
+}
+
+export const createProtoBurnPsbt = async ({
+  account,
+  inscriptionAddress,
+  runeId,
+  amount,
+  pointer,
+  protocolTag,
+  provider,
+  feeRate,
+  fee,
+}: {
+  account: Account
+  inscriptionAddress: string
+  runeId: string
+  amount: number
+  pointer: number
+  protocolTag: bigint
+  provider: Provider
+  feeRate?: number
+  fee?: number
+}) => {
+  try {
+    const minFee = minimumFee({
+      taprootInputCount: 2,
+      nonTaprootInputCount: 0,
+      outputCount: 2,
+    })
+    const calculatedFee = minFee * feeRate < 250 ? 250 : minFee * feeRate
+    let finalFee = fee ? fee : calculatedFee
+
+    let gatheredUtxos: {
+      totalAmount: number
+      utxos: FormattedUtxo[]
+    } = await accountSpendableUtxos({
+      account,
+      provider,
+      spendAmount: finalFee + inscriptionSats,
+    })
+
+    let psbt = new bitcoin.Psbt({ network: provider.network })
+
+    const { runeUtxos, runeTotalSatoshis } = await findRuneUtxos({
+      address: inscriptionAddress,
+      greatestToLeast: account.spendStrategy.utxoSortGreatestToLeast,
+      provider,
+      runeId,
+      targetNumberOfRunes: amount,
+    })
+
+    for await (const utxo of runeUtxos) {
+      if (getAddressType(utxo.address) === 0) {
+        const previousTxHex: string = await provider.esplora.getTxHex(utxo.txId)
+        psbt.addInput({
+          hash: utxo.txId,
+          index: parseInt(utxo.txIndex),
+          nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
+        })
+      }
+      if (getAddressType(utxo.address) === 2) {
+        const redeemScript = bitcoin.script.compile([
+          bitcoin.opcodes.OP_0,
+          bitcoin.crypto.hash160(
+            Buffer.from(account.nestedSegwit.pubkey, 'hex')
+          ),
+        ])
+
+        psbt.addInput({
+          hash: utxo.txId,
+          index: parseInt(utxo.txIndex),
+          redeemScript: redeemScript,
+          witnessUtxo: {
+            value: utxo.satoshis,
+            script: bitcoin.script.compile([
+              bitcoin.opcodes.OP_HASH160,
+              bitcoin.crypto.hash160(redeemScript),
+              bitcoin.opcodes.OP_EQUAL,
+            ]),
+          },
+        })
+      }
+      if (
+        getAddressType(utxo.address) === 1 ||
+        getAddressType(utxo.address) === 3
+      ) {
+        const previousTxInfo = await provider.esplora.getTxInfo(utxo.txId)
+
+        psbt.addInput({
+          hash: utxo.txId,
+          index: parseInt(utxo.txIndex),
+          witnessUtxo: {
+            value: utxo.satoshis,
+            script: Buffer.from(
+              previousTxInfo.vout[utxo.txIndex].scriptpubkey,
+              'hex'
+            ),
+          },
+        })
+      }
+    }
+
+    if (!fee && gatheredUtxos.utxos.length > 1) {
+      const txSize = minimumFee({
+        taprootInputCount: gatheredUtxos.utxos.length,
+        nonTaprootInputCount: 0,
+        outputCount: 3,
+      })
+      finalFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
+
+      if (gatheredUtxos.totalAmount < finalFee) {
+        gatheredUtxos = await accountSpendableUtxos({
+          account,
+          provider,
+          spendAmount: finalFee + inscriptionSats,
+        })
+      }
+    }
+
+    if (!fee && gatheredUtxos.utxos.length > 1) {
+      const txSize = minimumFee({
+        taprootInputCount: gatheredUtxos.utxos.length,
+        nonTaprootInputCount: 0,
+        outputCount: 2,
+      })
+      finalFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
+
+      if (gatheredUtxos.totalAmount < finalFee) {
+        gatheredUtxos = await accountSpendableUtxos({
+          account,
+          provider,
+          spendAmount: finalFee + inscriptionSats,
+        })
+      }
+    }
+
+    for (let i = 0; i < gatheredUtxos.utxos.length; i++) {
+      if (getAddressType(gatheredUtxos.utxos[i].address) === 0) {
+        const previousTxHex: string = await provider.esplora.getTxHex(
+          gatheredUtxos.utxos[i].txId
+        )
+        psbt.addInput({
+          hash: gatheredUtxos.utxos[i].txId,
+          index: gatheredUtxos.utxos[i].outputIndex,
+          nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
+        })
+      }
+      if (getAddressType(gatheredUtxos.utxos[i].address) === 2) {
+        const redeemScript = bitcoin.script.compile([
+          bitcoin.opcodes.OP_0,
+          bitcoin.crypto.hash160(
+            Buffer.from(account.nestedSegwit.pubkey, 'hex')
+          ),
+        ])
+
+        psbt.addInput({
+          hash: gatheredUtxos.utxos[i].txId,
+          index: gatheredUtxos.utxos[i].outputIndex,
+          redeemScript: redeemScript,
+          witnessUtxo: {
+            value: gatheredUtxos.utxos[i].satoshis,
+            script: bitcoin.script.compile([
+              bitcoin.opcodes.OP_HASH160,
+              bitcoin.crypto.hash160(redeemScript),
+              bitcoin.opcodes.OP_EQUAL,
+            ]),
+          },
+        })
+      }
+      if (
+        getAddressType(gatheredUtxos.utxos[i].address) === 1 ||
+        getAddressType(gatheredUtxos.utxos[i].address) === 3
+      ) {
+        psbt.addInput({
+          hash: gatheredUtxos.utxos[i].txId,
+          index: gatheredUtxos.utxos[i].outputIndex,
+          witnessUtxo: {
+            value: gatheredUtxos.utxos[i].satoshis,
+            script: Buffer.from(gatheredUtxos.utxos[i].scriptPk, 'hex'),
+          },
+        })
+      }
+    }
+
+    if (gatheredUtxos.totalAmount < finalFee + inscriptionSats) {
+      throw new OylTransactionError(Error('Insufficient Balance'))
+    }
+    const runeIdSplit = runeId.split(':')
+    const block = BigInt(runeIdSplit[0])
+    const tx = Number(runeIdSplit[1])
+    const script = createProtoBurnScript({
+      runes: [
+        {
+          id: { block, tx },
+          amount: BigInt(amount),
+        },
+      ],
+      protocolTag,
+      pointer,
     })
     const output = { script: script, value: 0 }
     psbt.addOutput(output)
+
+    const changeAmount =
+      gatheredUtxos.totalAmount - (finalFee + inscriptionSats)
+
+    psbt.addOutput({
+      value: inscriptionSats,
+      address: account.taproot.address,
+    })
+
+    psbt.addOutput({
+      address: account[account.spendStrategy.changeAddress].address,
+      value: changeAmount,
+    })
 
     const formattedPsbtTx = await formatInputsToSign({
       _psbt: psbt,
@@ -837,6 +1064,91 @@ export const actualEtchFee = async ({
   return { fee: finalFee }
 }
 
+export const actualProtoburnFee = async ({
+  account,
+  inscriptionAddress,
+  runeId,
+  amount,
+  pointer,
+  protocolTag,
+  provider,
+  feeRate,
+  signer,
+}: {
+  account: Account
+  inscriptionAddress: string
+  runeId: string
+  amount: number
+  pointer: number
+  protocolTag: bigint
+  provider: Provider
+  feeRate?: number
+  signer: Signer
+}) => {
+  if (!feeRate) {
+    feeRate = (await provider.esplora.getFeeEstimates())['1']
+  }
+
+  const { psbt } = await createProtoBurnPsbt({
+    account,
+    inscriptionAddress,
+    runeId,
+    amount,
+    pointer,
+    protocolTag,
+    provider,
+    feeRate,
+  })
+
+  const { signedPsbt } = await signer.signAllInputs({
+    rawPsbt: psbt,
+    finalize: true,
+  })
+
+  let rawPsbt = bitcoin.Psbt.fromBase64(signedPsbt, {
+    network: account.network,
+  })
+
+  const signedHexPsbt = rawPsbt.extractTransaction().toHex()
+
+  const vsize = (
+    await provider.sandshrew.bitcoindRpc.testMemPoolAccept([signedHexPsbt])
+  )[0].vsize
+
+  const correctFee = vsize * feeRate
+
+  const { psbt: finalPsbt } = await createProtoBurnPsbt({
+    account,
+    inscriptionAddress,
+    runeId,
+    amount,
+    pointer,
+    protocolTag,
+    provider,
+    feeRate,
+    fee: correctFee,
+  })
+
+  const { signedPsbt: signedAll } = await signer.signAllInputs({
+    rawPsbt: finalPsbt,
+    finalize: true,
+  })
+
+  let finalRawPsbt = bitcoin.Psbt.fromBase64(signedAll, {
+    network: account.network,
+  })
+
+  const finalSignedHexPsbt = finalRawPsbt.extractTransaction().toHex()
+
+  const finalVsize = (
+    await provider.sandshrew.bitcoindRpc.testMemPoolAccept([finalSignedHexPsbt])
+  )[0].vsize
+
+  const finalFee = finalVsize * feeRate
+
+  return { fee: finalFee }
+}
+
 export const send = async ({
   toAddress,
   amount,
@@ -986,6 +1298,63 @@ export const etch = async ({
     divisibility,
     runeName,
     account,
+    provider,
+    feeRate,
+    fee,
+  })
+
+  const { signedPsbt } = await signer.signAllInputs({
+    rawPsbt: finalPsbt,
+    finalize: true,
+  })
+
+  const result = await provider.pushPsbt({
+    psbtBase64: signedPsbt,
+  })
+
+  return result
+}
+
+export const protoburn = async ({
+  account,
+  inscriptionAddress,
+  runeId,
+  amount,
+  pointer,
+  protocolTag,
+  provider,
+  feeRate,
+  signer,
+}: {
+  account: Account
+  inscriptionAddress: string
+  runeId: string
+  amount: number
+  pointer: number
+  protocolTag: bigint
+  provider: Provider
+  feeRate?: number
+  signer: Signer
+}) => {
+  const { fee } = await actualProtoburnFee({
+    account,
+    inscriptionAddress,
+    runeId,
+    amount,
+    pointer,
+    protocolTag,
+    provider,
+    feeRate,
+    signer,
+  })
+
+  const { psbt: finalPsbt } = await createProtoBurnPsbt({
+    account,
+    inscriptionAddress,
+    runeId,
+    amount,
+    pointer,
+    protocolTag,
     provider,
     feeRate,
     fee,

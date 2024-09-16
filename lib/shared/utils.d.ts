@@ -91,6 +91,28 @@ export declare const createRuneEtchScript: ({ pointer, runeName, symbol, divisib
     premine?: number;
     turbo?: boolean;
 }) => Buffer;
+export declare const createProtoBurnScript: ({ runes, protocolTag, pointer, }: {
+    runes: {
+        id: {
+            block: bigint;
+            tx: number;
+        };
+        amount: bigint;
+    }[];
+    protocolTag: bigint;
+    pointer: number;
+}) => Buffer;
+export declare const encodeProtoburn: ({ runes, protocolTag, pointer, }: {
+    runes: {
+        id: {
+            block: bigint;
+            tx: number;
+        };
+        amount: bigint;
+    }[];
+    protocolTag: bigint;
+    pointer: number;
+}) => Buffer;
 export declare let RPC_ADDR: string;
 export declare const callBTCRPCEndpoint: (method: string, params: string | string[], network: string) => Promise<any>;
 export declare function getAddressType(address: string): AddressType | null;

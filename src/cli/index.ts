@@ -636,6 +636,71 @@ oyl rune etch -m 'abandon abandon abandon abandon abandon abandon abandon abando
     )
   })
 
+const runeProtoburn = new Command('protoburn')
+  .requiredOption(
+    '-p, --provider <provider>',
+    'provider to use when querying the network for utxos'
+  )
+  .requiredOption(
+    '-m, --mnemonic <mnemonic>',
+    'mnemonic you want to get private keys from'
+  )
+  .requiredOption(
+    '-protoTag, --protocolTag <protoTag>',
+    'Protorune Tag to be set'
+  )
+  .requiredOption('-rId, --runeId <runeId>', 'name of rune to etch')
+  .requiredOption('-ptr, --pointer <pointer>', 'the amount of runes each mint')
+  .option('-legacy, --legacy <legacy>', 'legacy private key')
+  .option('-taproot, --taproot <taproot>', 'taproot private key')
+  .option(
+    '-nested, --nested-segwit <nestedSegwit>',
+    'nested segwit private key'
+  )
+  .option(
+    '-native, --native-segwit <nativeSegwit>',
+    'native segwit private key'
+  )
+  .option('-feeRate, --feeRate <feeRate>', 'fee rate')
+  .option('-amt, --amount <amt>', 'amount to burn')
+  .option(
+    '-inscAdd, --inscriptionAddress <inscAdd>',
+    'address runes live on that you are burning'
+  )
+
+  /* @dev example call 
+oyl rune protoburn -m 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' -native 4604b4b710fe91f584fff084e1a9159fe4f8408fff380596a604948474ce4fa3 -taproot 41f41d69260df4cf277826a9b65a3717e4eeddbeedf637f212ca096576479361 -p regtest -feeRate 2 -inscAdd "bc1p..." -amt 100 -protoTag testing -rId 271:1 -ptr 0
+*/
+
+  .action(async (options) => {
+    const provider = defaultProvider[options.provider]
+    const signer = new Signer(provider.network, {
+      segwitPrivateKey: options.nativeSegwit,
+      taprootPrivateKey: options.taproot,
+      nestedSegwitPrivateKey: options.nestedSegwit,
+      legacyPrivateKey: options.legacy,
+    })
+    const account = mnemonicToAccount({
+      mnemonic: options.mnemonic,
+      opts: {
+        network: provider.network,
+      },
+    })
+    console.log(
+      await rune.protoburn({
+        pointer: Number(options.pointer),
+        runeId: options.runeId,
+        inscriptionAddress: options.inscAdd,
+        amount: Number(options.amt),
+        protocolTag: options.protoTag,
+        feeRate: options.feeRate,
+        account,
+        signer,
+        provider,
+      })
+    )
+  })
+
 const getRuneByName = new Command('getRuneByName')
   .description('Returns rune details based on name provided')
   .requiredOption(
