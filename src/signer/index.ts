@@ -207,7 +207,9 @@ export class Signer {
 
       switch (true) {
         case matchingTaprootPubKey:
-          unSignedPsbt.signTaprootInput(i, tweakedSigner)
+          unSignedPsbt.signTaprootInput(i, tweakedSigner, null, [
+            131
+          ])
           if (finalize) {
             unSignedPsbt.finalizeInput(i)
           }

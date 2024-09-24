@@ -138,7 +138,7 @@ const signPsbt = new Command('sign')
 
     let finalize = options.finalize == 'yes' ? true : false
     let extract = options.extract == 'yes' ? true : false
-    const { signedHexPsbt } = await signer.signAllInputs({
+    const { signedHexPsbt, signedPsbt } = await signer.signAllInputs({
       rawPsbtHex: process.env.PSBT_HEX,
       finalize,
     })
@@ -150,6 +150,7 @@ const signPsbt = new Command('sign')
       console.log('extracted tx hex', extractedTx.toHex())
     }
     console.log('signed hex psbt', signedHexPsbt)
+    console.log('signed psbt', signedPsbt)
   })
 
 const accountUtxosToSpend = new Command('accountUtxos')
