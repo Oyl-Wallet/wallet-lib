@@ -90,7 +90,7 @@ export declare const createRuneEtchScript: ({ pointer, runeName, symbol, divisib
     cap?: number;
     premine?: number;
     turbo?: boolean;
-}) => any;
+}) => Buffer;
 export declare let RPC_ADDR: string;
 export declare const callBTCRPCEndpoint: (method: string, params: string | string[], network: string) => Promise<any>;
 export declare function getAddressType(address: string): AddressType | null;

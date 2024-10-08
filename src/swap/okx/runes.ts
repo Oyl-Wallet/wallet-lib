@@ -2,7 +2,7 @@ import { FormattedUtxo } from "@utxo/utxo";
 import { ESTIMATE_TX_SIZE, addInputConditionally, buildPsbtWithFee, calculateAmountGathered, getAllUTXOsWorthASpecificValue, getUTXOsToCoverAmount } from "../helpers"
 import { ConditionalInput, GenOkxRuneUnsignedPsbt, OutputTxTemplate } from "../types"
 import * as bitcoin from 'bitcoinjs-lib'
-import { getAddressType } from "shared/utils";
+import { getAddressType } from "../../shared/utils";
 
 
 interface OkxRuneListingData {
