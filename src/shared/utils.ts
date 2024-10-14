@@ -19,6 +19,8 @@ import { EsploraRpc } from '../rpclient/esplora'
 import { Provider } from '../provider/provider'
 import { addressFormats } from '@sadoprotocol/ordit-sdk'
 import { encodeRunestone, RunestoneSpec } from '@magiceden-oss/runestone-lib'
+import { FormattedUtxo } from '@utxo/utxo'
+import { Account } from '@account/account'
 
 bitcoin.initEccLib(ecc)
 
@@ -427,15 +429,15 @@ export const createRuneMintScript = ({
   runeId: string
   pointer?: number
 }) => {
-  const [blockStr, txStr] = runeId.split(':');
+  const [blockStr, txStr] = runeId.split(':')
   const runestone: RunestoneSpec = {
     mint: {
       block: BigInt(blockStr),
       tx: parseInt(txStr, 10),
     },
-    pointer
+    pointer,
   }
-  return encodeRunestone(runestone);
+  return encodeRunestone(runestone)
 }
 
 export const createRuneEtchScript = ({
@@ -703,5 +705,113 @@ export function findRuneUtxosToSpend(utxos: RuneUtxo[], target: number) {
     }
   } else {
     return undefined
+  }
+}
+
+export const addAnyInput = async ({
+  psbt,
+  utxo,
+  provider,
+  account,
+}: {
+  psbt: bitcoin.Psbt
+  utxo: FormattedUtxo
+  provider: Provider
+  account: Account
+}) => {
+  if (getAddressType(utxo.address) === 0) {
+    const previousTxHex: string = await provider.esplora.getTxHex(utxo.txId)
+    psbt.addInput({
+      hash: utxo.txId,
+      index: utxo.outputIndex,
+      nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
+    })
+  }
+  if (getAddressType(utxo.address) === 2) {
+    const redeemScript = bitcoin.script.compile([
+      bitcoin.opcodes.OP_0,
+      bitcoin.crypto.hash160(Buffer.from(account.nestedSegwit.pubkey, 'hex')),
+    ])
+
+    psbt.addInput({
+      hash: utxo.txId,
+      index: utxo.outputIndex,
+      redeemScript: redeemScript,
+      witnessUtxo: {
+        value: utxo.satoshis,
+        script: bitcoin.script.compile([
+          bitcoin.opcodes.OP_HASH160,
+          bitcoin.crypto.hash160(redeemScript),
+          bitcoin.opcodes.OP_EQUAL,
+        ]),
+      },
+    })
+  }
+  if (
+    getAddressType(utxo.address) === 1 ||
+    getAddressType(utxo.address) === 3
+  ) {
+    psbt.addInput({
+      hash: utxo.txId,
+      index: utxo.outputIndex,
+      witnessUtxo: {
+        value: utxo.satoshis,
+        script: Buffer.from(utxo.scriptPk, 'hex'),
+      },
+    })
+  }
+}
+
+export const addSingleAddressInput = async ({
+  psbt,
+  utxo,
+  provider,
+  account,
+}: {
+  psbt: bitcoin.Psbt
+  utxo: FormattedUtxo
+  provider: Provider
+  account: Account
+}) => {
+  if (getAddressType(utxo.address) === 0) {
+    const previousTxHex: string = await provider.esplora.getTxHex(utxo.txId)
+    psbt.addInput({
+      hash: utxo.txId,
+      index: utxo.outputIndex,
+      nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
+    })
+  }
+  if (getAddressType(utxo.address) === 2) {
+    const redeemScript = bitcoin.script.compile([
+      bitcoin.opcodes.OP_0,
+      bitcoin.crypto.hash160(Buffer.from(account.nestedSegwit.pubkey, 'hex')),
+    ])
+
+    psbt.addInput({
+      hash: utxo.txId,
+      index: utxo.outputIndex,
+      redeemScript: redeemScript,
+      witnessUtxo: {
+        value: utxo.satoshis,
+        script: bitcoin.script.compile([
+          bitcoin.opcodes.OP_HASH160,
+          bitcoin.crypto.hash160(redeemScript),
+          bitcoin.opcodes.OP_EQUAL,
+        ]),
+      },
+    })
+  }
+  if (
+    getAddressType(utxo.address) === 1 ||
+    getAddressType(utxo.address) === 3
+  ) {
+    psbt.addInput({
+      hash: utxo.txId,
+      index: utxo.outputIndex,
+      witnessUtxo: {
+        value: utxo.satoshis,
+        script: Buffer.from(utxo.scriptPk, 'hex'),
+      },
+    })
   }
 }

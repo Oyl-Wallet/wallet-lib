@@ -3,7 +3,7 @@ import { Provider } from '../provider'
 import * as bitcoin from 'bitcoinjs-lib'
 import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
 import { Account } from '../account/account'
-import { formatInputsToSign } from '../shared/utils'
+import { addAnyInput, formatInputsToSign } from '../shared/utils'
 import { OylTransactionError } from '../errors'
 import { getAddressType } from '../shared/utils'
 import { Signer } from '../signer'
@@ -116,51 +116,12 @@ export const createPsbt = async ({
     }
 
     for (let i = 0; i < gatheredUtxos.utxos.length; i++) {
-      if (getAddressType(gatheredUtxos.utxos[i].address) === 0) {
-        const previousTxHex: string = await provider.esplora.getTxHex(
-          gatheredUtxos.utxos[i].txId
-        )
-        psbt.addInput({
-          hash: gatheredUtxos.utxos[i].txId,
-          index: gatheredUtxos.utxos[i].outputIndex,
-          nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
-        })
-      }
-      if (getAddressType(gatheredUtxos.utxos[i].address) === 2) {
-        const redeemScript = bitcoin.script.compile([
-          bitcoin.opcodes.OP_0,
-          bitcoin.crypto.hash160(
-            Buffer.from(account.nestedSegwit.pubkey, 'hex')
-          ),
-        ])
-
-        psbt.addInput({
-          hash: gatheredUtxos.utxos[i].txId,
-          index: gatheredUtxos.utxos[i].outputIndex,
-          redeemScript: redeemScript,
-          witnessUtxo: {
-            value: gatheredUtxos.utxos[i].satoshis,
-            script: bitcoin.script.compile([
-              bitcoin.opcodes.OP_HASH160,
-              bitcoin.crypto.hash160(redeemScript),
-              bitcoin.opcodes.OP_EQUAL,
-            ]),
-          },
-        })
-      }
-      if (
-        getAddressType(gatheredUtxos.utxos[i].address) === 1 ||
-        getAddressType(gatheredUtxos.utxos[i].address) === 3
-      ) {
-        psbt.addInput({
-          hash: gatheredUtxos.utxos[i].txId,
-          index: gatheredUtxos.utxos[i].outputIndex,
-          witnessUtxo: {
-            value: gatheredUtxos.utxos[i].satoshis,
-            script: Buffer.from(gatheredUtxos.utxos[i].scriptPk, 'hex'),
-          },
-        })
-      }
+      await addAnyInput({
+        psbt,
+        utxo: gatheredUtxos.utxos[i],
+        provider,
+        account,
+      })
     }
 
     if (gatheredUtxos.totalAmount < finalFee) {
@@ -210,16 +171,16 @@ export const findCollectible = async ({
   const inscriptionUtxoData =
     inscriptionUtxoDetails.vout[inscriptionTxVOutIndex]
   const outputId = `${inscriptionTxId}:${inscriptionTxVOutIndex}`
-  const [inscriptionsOnOutput, isSpentArray, hasRune] = await Promise.all([
+  const [inscriptionsOnOutput, isSpentArray] = await Promise.all([
     provider.ord.getTxOutput(outputId),
     provider.esplora.getTxOutspends(inscriptionTxId),
-    provider.api.getOutputRune({ output: outputId }),
   ])
   const isSpent = isSpentArray[inscriptionTxVOutIndex]
   if (
     inscriptionsOnOutput.inscriptions.length > 1 ||
-    inscriptionsOnOutput.runes.length > 0 ||
-    hasRune?.output
+    Array.isArray(inscriptionsOnOutput.runes)
+      ? Number(inscriptionsOnOutput.runes.length) > 1
+      : Object.keys(inscriptionsOnOutput.runes).length > 1
   ) {
     throw new Error(
       'Unable to send from UTXO with multiple inscriptions. Split UTXO before sending.'
