@@ -727,7 +727,7 @@ export const addAnyInput = async ({
       nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
     })
   }
-  if (getAddressType(utxo.address) === 2) {
+  if (getAddressType(utxo.address) === 2) { 
     const redeemScript = bitcoin.script.compile([
       bitcoin.opcodes.OP_0,
       bitcoin.crypto.hash160(Buffer.from(account.nestedSegwit.pubkey, 'hex')),

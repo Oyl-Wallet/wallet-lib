@@ -96,10 +96,12 @@ export const createPsbt = async ({
 
     const changeAmount = gatheredUtxos.totalAmount - (finalFee + oylFee)
 
-    psbt.addOutput({
-      address: account[account.spendStrategy.changeAddress].address,
-      value: changeAmount,
-    })
+    if (changeAmount >= 546) {
+      psbt.addOutput({
+        address: account[account.spendStrategy.changeAddress].address,
+        value: changeAmount,
+      })
+    }
 
     psbt.addOutput({
       address: toAddress,
