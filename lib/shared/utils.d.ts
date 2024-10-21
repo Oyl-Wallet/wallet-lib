@@ -4,6 +4,8 @@ import { AddressType, IBlockchainInfoUTXO, Network, RuneUtxo, ToSignInput, TxInp
 import { SandshrewBitcoinClient } from '../rpclient/sandshrew';
 import { EsploraRpc } from '../rpclient/esplora';
 import { Provider } from '../provider/provider';
+import { FormattedUtxo } from '@utxo/utxo';
+import { Account } from '@account/account';
 export interface IBISWalletIx {
     validity: any;
     isBrc: boolean;
@@ -122,3 +124,15 @@ export declare function findRuneUtxosToSpend(utxos: RuneUtxo[], target: number):
     change: number;
     totalSatoshis: number;
 };
+export declare const addAnyInput: ({ psbt, utxo, provider, account, }: {
+    psbt: bitcoin.Psbt;
+    utxo: FormattedUtxo;
+    provider: Provider;
+    account: Account;
+}) => Promise<void>;
+export declare const addSingleAddressInput: ({ psbt, utxo, provider, account, }: {
+    psbt: bitcoin.Psbt;
+    utxo: FormattedUtxo;
+    provider: Provider;
+    account: Account;
+}) => Promise<void>;
