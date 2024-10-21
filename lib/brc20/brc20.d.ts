@@ -3,7 +3,9 @@ import { Provider } from '../provider/provider';
 import * as bitcoin from 'bitcoinjs-lib';
 import { Account } from '../account/account';
 import { Signer } from '../signer';
-export declare const transferEstimate: ({ toAddress, feeRate, account, provider, fee, }: {
+import { GatheredUtxos } from 'shared/interface';
+export declare const transferEstimate: ({ gatheredUtxos, toAddress, feeRate, account, provider, fee, }: {
+    gatheredUtxos: GatheredUtxos;
     toAddress: string;
     feeRate: number;
     account: Account;
@@ -13,7 +15,8 @@ export declare const transferEstimate: ({ toAddress, feeRate, account, provider,
     psbt: string;
     fee: number;
 }>;
-export declare const commit: ({ ticker, amount, feeRate, account, tweakedTaprootPublicKey, provider, fee, finalSendFee, }: {
+export declare const commit: ({ gatheredUtxos, ticker, amount, feeRate, account, tweakedTaprootPublicKey, provider, finalTransferFee, fee, }: {
+    gatheredUtxos: GatheredUtxos;
     ticker: string;
     amount: number;
     feeRate: number;
@@ -21,7 +24,7 @@ export declare const commit: ({ ticker, amount, feeRate, account, tweakedTaproot
     tweakedTaprootPublicKey: Buffer;
     provider: Provider;
     fee?: number;
-    finalSendFee?: number;
+    finalTransferFee?: number;
 }) => Promise<{
     psbt: string;
     fee: number;
@@ -51,7 +54,8 @@ export declare const transfer: ({ commitChangeUtxoId, revealTxId, toAddress, fee
 }) => Promise<{
     psbt: string;
 }>;
-export declare const send: ({ toAddress, ticker, amount, account, provider, feeRate, signer, }: {
+export declare const send: ({ gatheredUtxos, toAddress, ticker, amount, account, provider, feeRate, signer, }: {
+    gatheredUtxos: GatheredUtxos;
     toAddress: string;
     ticker: string;
     amount: number;

@@ -1,6 +1,5 @@
 /// <reference types="node" />
-import { AddressType, AssetType } from "../shared/interface";
-import { FormattedUtxo } from '../utxo/utxo';
+import { AddressType, AssetType, FormattedUtxo } from '../shared/interface';
 import { Psbt } from 'bitcoinjs-lib';
 import { Provider } from '../provider';
 import { Account } from '../account';
@@ -102,6 +101,7 @@ export interface SelectSpendAddress {
     provider: Provider;
     feeRate: number;
     account: Account;
+    utxos: FormattedUtxo[];
 }
 export interface SelectSpendAddressResponse {
     offers: MarketplaceOffer[];
@@ -169,7 +169,9 @@ export interface GetSellerPsbtRequest {
     buyerAddress: string;
     buyerPublicKey: string;
     feeRate: number;
+    ticker?: string;
     receiveAddress?: string;
+    receivePublicKey?: string;
     orders: BuyOrder[];
 }
 export interface BuyOrder {
@@ -234,13 +236,12 @@ export interface UtxosToCoverAmount {
     insistConfirmedUtxos?: boolean;
 }
 export interface BidAffordabilityCheck {
-    address: string;
     estimatedCost: number;
     offers: MarketplaceOffer[];
-    provider: Provider;
+    utxos: FormattedUtxo[];
 }
 export interface BidAffordabilityCheckResponse {
-    utxos: FormattedUtxo[];
+    retrievedUtxos: FormattedUtxo[];
     estimatedCost: number;
     offers_: MarketplaceOffer[];
     canAfford: boolean;
@@ -275,6 +276,7 @@ export interface ProcessOfferOptions {
     utxos: FormattedUtxo[];
     feeRate: number;
     pubKey: string;
+    receivePublicKey?: string;
     assetType: AssetType;
     provider: Provider;
     signer: Signer;

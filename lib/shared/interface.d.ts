@@ -2,6 +2,8 @@
 import { payments, Psbt } from 'bitcoinjs-lib';
 import * as bitcoin from 'bitcoinjs-lib';
 import { Provider } from '../provider';
+import { Signer } from '@signer/signer';
+import { Account } from '@account/account';
 export interface InscriptionResponse {
     address: string;
     inscriptions?: string;
@@ -177,6 +179,31 @@ export interface OkxBid {
     buyerPsbt: string;
     orderId: number;
     brc20: boolean;
+}
+export interface GatheredUtxos {
+    utxos: FormattedUtxo[];
+    totalAmount: number;
+}
+export interface FormattedUtxo {
+    txId: string;
+    outputIndex: number;
+    satoshis: number;
+    scriptPk: string;
+    address: string;
+    inscriptions: any[];
+    confirmations: number;
+}
+export interface MarketplaceAccount {
+    provider?: Provider;
+    spendAddress?: string;
+    spendPubKey?: string;
+    altSpendAddress?: string;
+    altSpendPubKey?: string;
+    account?: Account;
+    signer: Signer;
+    assetType: AssetType;
+    receiveAddress: string;
+    feeRate: number;
 }
 export interface GetOffersParams {
     ticker: string;

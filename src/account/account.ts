@@ -29,12 +29,12 @@ export type Account = {
   network: bitcoin.Network
 }
 
-type AddressType = 'nativeSegwit' | 'taproot' | 'nestedSegwit' | 'legacy'
+export type AddressKey = 'nativeSegwit' | 'taproot' | 'nestedSegwit' | 'legacy'
 
 export interface SpendStrategy {
-  addressOrder: AddressType[]
+  addressOrder: AddressKey[]
   utxoSortGreatestToLeast: boolean
-  changeAddress: AddressType
+  changeAddress: AddressKey
 }
 export interface MnemonicToAccountOptions {
   network?: bitcoin.networks.Network
@@ -65,7 +65,7 @@ export const mnemonicToAccount = ({
             'nestedSegwit',
             'legacy',
             'taproot',
-          ] as AddressType[]),
+          ] as AddressKey[]),
       utxoSortGreatestToLeast:
         opts?.spendStrategy?.utxoSortGreatestToLeast !== undefined
           ? opts.spendStrategy.utxoSortGreatestToLeast

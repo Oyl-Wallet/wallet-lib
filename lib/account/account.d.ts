@@ -20,11 +20,11 @@ export type Account = {
     spendStrategy: SpendStrategy;
     network: bitcoin.Network;
 };
-type AddressType = 'nativeSegwit' | 'taproot' | 'nestedSegwit' | 'legacy';
+export type AddressKey = 'nativeSegwit' | 'taproot' | 'nestedSegwit' | 'legacy';
 export interface SpendStrategy {
-    addressOrder: AddressType[];
+    addressOrder: AddressKey[];
     utxoSortGreatestToLeast: boolean;
-    changeAddress: AddressType;
+    changeAddress: AddressKey;
 }
 export interface MnemonicToAccountOptions {
     network?: bitcoin.networks.Network;
@@ -78,4 +78,3 @@ export declare const getWalletPrivateKeys: ({ mnemonic, opts, }: {
         privateKey: string;
     };
 };
-export {};

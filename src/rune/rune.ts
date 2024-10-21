@@ -1,22 +1,31 @@
 import { minimumFee } from '../btc/btc'
 import { Provider } from '../provider/provider'
 import * as bitcoin from 'bitcoinjs-lib'
-import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
+import { accountSpendableUtxos, accountUtxos } from '../utxo/utxo'
 import { Account } from '../account/account'
 import {
+  createInscriptionScript,
   createRuneEtchScript,
   createRuneMintScript,
   createRuneSendScript,
   formatInputsToSign,
+  getOutputValueByVOutIndex,
+  hexToLittleEndian,
   inscriptionSats,
+  runeFromStr,
+  tweakSigner,
 } from '../shared/utils'
 import { OylTransactionError } from '../errors'
-import { RuneUTXO } from '../shared/interface'
+import { FormattedUtxo, GatheredUtxos, RuneUTXO } from '../shared/interface'
 import { getAddressType } from '../shared/utils'
 import { Signer } from '../signer'
-import { encodeRunestone, RunestoneSpec } from '@magiceden-oss/runestone-lib'
+import { toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
+import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341'
+import { ECPairInterface } from 'ecpair'
+import { encodeRunestone } from '@magiceden-oss/runestone-lib'
 
 export const createSendPsbt = async ({
+  gatheredUtxos,
   account,
   runeId,
   provider,
@@ -26,6 +35,7 @@ export const createSendPsbt = async ({
   feeRate,
   fee,
 }: {
+  gatheredUtxos: GatheredUtxos
   account: Account
   runeId: string
   provider: Provider
@@ -44,14 +54,13 @@ export const createSendPsbt = async ({
     const calculatedFee = minFee * feeRate < 250 ? 250 : minFee * feeRate
     let finalFee = fee ? fee : calculatedFee
 
-    let gatheredUtxos: {
-      totalAmount: number
-      utxos: FormattedUtxo[]
-    } = await accountSpendableUtxos({
-      account,
-      provider,
-      spendAmount: finalFee + inscriptionSats,
-    })
+    if (!gatheredUtxos) {
+      gatheredUtxos = await accountSpendableUtxos({
+        account,
+        provider,
+        spendAmount: finalFee,
+      })
+    }
 
     let psbt = new bitcoin.Psbt({ network: provider.network })
     const { runeUtxos, runeTotalSatoshis, divisibility } = await findRuneUtxos({
@@ -121,13 +130,13 @@ export const createSendPsbt = async ({
       })
       finalFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
 
-      if (gatheredUtxos.totalAmount < finalFee) {
-        gatheredUtxos = await accountSpendableUtxos({
-          account,
-          provider,
-          spendAmount: finalFee + inscriptionSats,
-        })
+      if (gatheredUtxos.totalAmount < finalFee + inscriptionSats) {
+        throw new OylTransactionError(Error('Insufficient Balance'))
       }
+    }
+
+    if (gatheredUtxos.totalAmount < finalFee + inscriptionSats) {
+      throw new OylTransactionError(Error('Insufficient Balance'))
     }
 
     for (let i = 0; i < gatheredUtxos.utxos.length; i++) {
@@ -178,9 +187,15 @@ export const createSendPsbt = async ({
       }
     }
 
-    if (gatheredUtxos.totalAmount < finalFee + inscriptionSats) {
-      throw new OylTransactionError(Error('Insufficient Balance'))
-    }
+    const script = createRuneSendScript({
+      runeId,
+      amount,
+      divisibility,
+      sendOutputIndex: 2,
+      pointer: 1,
+    })
+    const output = { script: script, value: 0 }
+    psbt.addOutput(output)
 
     const changeAmount =
       gatheredUtxos.totalAmount - (finalFee + inscriptionSats)
@@ -200,16 +215,6 @@ export const createSendPsbt = async ({
       value: changeAmount,
     })
 
-    const script = createRuneSendScript({
-      runeId,
-      amount,
-      divisibility,
-      sendOutputIndex: 1,
-      pointer: 0,
-    })
-    const output = { script: script, value: 0 }
-    psbt.addOutput(output)
-
     const formattedPsbtTx = await formatInputsToSign({
       _psbt: psbt,
       senderPublicKey: account.taproot.pubkey,
@@ -223,12 +228,14 @@ export const createSendPsbt = async ({
 }
 
 export const createMintPsbt = async ({
+  gatheredUtxos,
   account,
   runeId,
   provider,
   feeRate,
   fee,
 }: {
+  gatheredUtxos: GatheredUtxos
   account: Account
   runeId: string
   provider: Provider
@@ -243,16 +250,13 @@ export const createMintPsbt = async ({
     })
     const calculatedFee = minFee * feeRate < 250 ? 250 : minFee * feeRate
     let finalFee = fee ? fee : calculatedFee
-
-    let gatheredUtxos: {
-      totalAmount: number
-      utxos: FormattedUtxo[]
-    } = await accountSpendableUtxos({
-      account,
-      provider,
-      spendAmount: finalFee + inscriptionSats,
-    })
-
+    if (!gatheredUtxos) {
+      gatheredUtxos = await accountSpendableUtxos({
+        account,
+        provider,
+        spendAmount: finalFee,
+      })
+    }
     let psbt = new bitcoin.Psbt({ network: provider.network })
 
     if (!fee && gatheredUtxos.utxos.length > 1) {
@@ -263,15 +267,14 @@ export const createMintPsbt = async ({
       })
       finalFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
 
-      if (gatheredUtxos.totalAmount < finalFee) {
-        gatheredUtxos = await accountSpendableUtxos({
-          account,
-          provider,
-          spendAmount: finalFee + inscriptionSats,
-        })
+      if (gatheredUtxos.totalAmount < finalFee + inscriptionSats) {
+        throw new OylTransactionError(Error('Insufficient Balance'))
       }
     }
 
+    if (gatheredUtxos.totalAmount < finalFee + inscriptionSats) {
+      throw new OylTransactionError(Error('Insufficient Balance'))
+    }
     for (let i = 0; i < gatheredUtxos.utxos.length; i++) {
       if (getAddressType(gatheredUtxos.utxos[i].address) === 0) {
         const previousTxHex: string = await provider.esplora.getTxHex(
@@ -324,6 +327,14 @@ export const createMintPsbt = async ({
       throw new OylTransactionError(Error('Insufficient Balance'))
     }
 
+    const script = createRuneMintScript({
+      runeId,
+      pointer: 1,
+    })
+
+    const output = { script, value: 0 }
+    psbt.addOutput(output)
+
     const changeAmount =
       gatheredUtxos.totalAmount - (finalFee + inscriptionSats)
 
@@ -335,16 +346,6 @@ export const createMintPsbt = async ({
     psbt.addOutput({
       address: account[account.spendStrategy.changeAddress].address,
       value: changeAmount,
-    })
-
-    const mintScript = createRuneMintScript({
-      runeId,
-      pointer: 0,
-    }).encodedRunestone
-
-    psbt.addOutput({ 
-      script: mintScript, 
-      value: 0 
     })
 
     const formattedPsbtTx = await formatInputsToSign({
@@ -359,28 +360,22 @@ export const createMintPsbt = async ({
   }
 }
 
-export const createEtchPsbt = async ({
-  account,
-  symbol,
-  cap,
-  premine,
-  perMintAmount,
-  turbo,
-  divisibility,
+export const createEtchCommit = async ({
+  gatheredUtxos,
+  taprootKeyPair,
+  tweakedTaprootKeyPair,
   runeName,
+  account,
   provider,
   feeRate,
   fee,
 }: {
+  gatheredUtxos: GatheredUtxos
+  taprootKeyPair: bitcoin.Signer
+  tweakedTaprootKeyPair: bitcoin.Signer
+  runeName: string
   account: Account
   provider: Provider
-  symbol: string
-  cap?: number
-  premine?: number
-  perMintAmount: number
-  turbo?: boolean
-  divisibility?: number
-  runeName: string
   feeRate?: number
   fee?: number
 }) => {
@@ -393,16 +388,47 @@ export const createEtchPsbt = async ({
     const calculatedFee = minFee * feeRate < 250 ? 250 : minFee * feeRate
     let finalFee = fee ? fee : calculatedFee
 
-    let gatheredUtxos: {
-      totalAmount: number
-      utxos: FormattedUtxo[]
-    } = await accountSpendableUtxos({
-      account,
-      provider,
-      spendAmount: finalFee + inscriptionSats,
+    let psbt = new bitcoin.Psbt({ network: provider.network })
+
+    let runeNameHex = runeFromStr(runeName).toString(16)
+    if (runeNameHex.length % 2 !== 0) {
+      runeNameHex = '0' + runeNameHex
+    }
+
+    const runeNameLittleEndian = hexToLittleEndian(runeNameHex)
+    const runeNameLittleEndianUint8 = Uint8Array.from(
+      Buffer.from(runeNameLittleEndian, 'hex')
+    )
+
+    let script: bitcoin.Stack = [
+      toXOnly(tweakedTaprootKeyPair.publicKey),
+      bitcoin.opcodes.OP_CHECKSIG,
+      bitcoin.opcodes.OP_0,
+      bitcoin.opcodes.OP_IF,
+      Buffer.from(runeNameLittleEndianUint8),
+      bitcoin.opcodes.OP_ENDIF,
+    ]
+
+    const outputScript = bitcoin.script.compile(script)
+
+    const inscriberInfo = bitcoin.payments.p2tr({
+      internalPubkey: toXOnly(tweakedTaprootKeyPair.publicKey),
+      scriptTree: { output: outputScript },
+      network: provider.network,
     })
 
-    let psbt = new bitcoin.Psbt({ network: provider.network })
+    psbt.addOutput({
+      value: Number(finalFee) + 546,
+      address: inscriberInfo.address,
+    })
+
+    if (!gatheredUtxos) {
+      gatheredUtxos = await accountSpendableUtxos({
+        account,
+        provider,
+        spendAmount: finalFee,
+      })
+    }
 
     if (!fee && gatheredUtxos.utxos.length > 1) {
       const txSize = minimumFee({
@@ -474,30 +500,12 @@ export const createEtchPsbt = async ({
     }
 
     const changeAmount =
-      gatheredUtxos.totalAmount - (finalFee + inscriptionSats)
-
-    psbt.addOutput({
-      value: inscriptionSats,
-      address: account.taproot.address,
-    })
+      gatheredUtxos.totalAmount - (finalFee * 2 + inscriptionSats)
 
     psbt.addOutput({
       address: account[account.spendStrategy.changeAddress].address,
       value: changeAmount,
     })
-
-    const script = createRuneEtchScript({
-      symbol,
-      cap,
-      premine,
-      perMintAmount,
-      turbo,
-      divisibility,
-      runeName,
-      pointer: 0,
-    })
-    const output = { script: script, value: 0 }
-    psbt.addOutput(output)
 
     const formattedPsbtTx = await formatInputsToSign({
       _psbt: psbt,
@@ -505,7 +513,134 @@ export const createEtchPsbt = async ({
       network: provider.network,
     })
 
-    return { psbt: formattedPsbtTx.toBase64() }
+    return { psbt: formattedPsbtTx.toBase64(), script: outputScript }
+  } catch (error) {
+    throw new OylTransactionError(error)
+  }
+}
+
+export const createEtchReveal = async ({
+  symbol,
+  cap,
+  premine,
+  perMintAmount,
+  turbo,
+  divisibility,
+  runeName,
+  receiverAddress,
+  script,
+  feeRate,
+  tweakedTaprootKeyPair,
+  taprootKeyPair,
+  provider,
+  fee = 0,
+  commitTxId,
+}: {
+  symbol: string
+  cap: bigint
+  premine: bigint
+  perMintAmount: bigint
+  turbo: boolean
+  divisibility: number
+  runeName: string
+  receiverAddress: string
+  script: Buffer
+  feeRate: number
+  tweakedTaprootKeyPair: bitcoin.Signer
+  taprootKeyPair: bitcoin.Signer
+  provider: Provider
+  fee?: number
+  commitTxId: string
+}) => {
+  try {
+    if (!feeRate) {
+      feeRate = (await provider.esplora.getFeeEstimates())['1']
+    }
+
+    const psbt: bitcoin.Psbt = new bitcoin.Psbt({ network: provider.network })
+    const minFee = minimumFee({
+      taprootInputCount: 1,
+      nonTaprootInputCount: 0,
+      outputCount: 2,
+    })
+
+    const revealTxBaseFee = minFee * feeRate < 250 ? 250 : minFee * feeRate
+    const revealTxChange = fee === 0 ? 0 : Number(revealTxBaseFee) - fee
+
+    const commitTxOutput = await getOutputValueByVOutIndex({
+      txId: commitTxId,
+      vOut: 0,
+      esploraRpc: provider.esplora,
+    })
+
+    if (!commitTxOutput) {
+      throw new Error('Error getting vin #0 value')
+    }
+
+    const p2pk_redeem = { output: script }
+
+    const { output, witness } = bitcoin.payments.p2tr({
+      internalPubkey: toXOnly(tweakedTaprootKeyPair.publicKey),
+      scriptTree: p2pk_redeem,
+      redeem: p2pk_redeem,
+      network: provider.network,
+    })
+
+    psbt.addInput({
+      hash: commitTxId,
+      index: 0,
+      witnessUtxo: {
+        value: commitTxOutput.value,
+        script: output,
+      },
+      tapLeafScript: [
+        {
+          leafVersion: LEAF_VERSION_TAPSCRIPT,
+          script: p2pk_redeem.output,
+          controlBlock: witness![witness!.length - 1],
+        },
+      ],
+    })
+
+    const runestone = encodeRunestone({
+      etching: {
+        runeName,
+        divisibility,
+        symbol,
+        premine,
+        terms: {
+          cap,
+          amount: perMintAmount,
+        },
+        turbo,
+      },
+      pointer: 1,
+    }).encodedRunestone
+
+    psbt.addOutput({
+      value: 0,
+      script: runestone,
+    })
+
+    psbt.addOutput({
+      value: 546,
+      address: receiverAddress,
+    })
+    if (revealTxChange > 546) {
+      psbt.addOutput({
+        value: revealTxChange,
+        address: receiverAddress,
+      })
+    }
+
+    psbt.signInput(0, tweakedTaprootKeyPair)
+    psbt.finalizeInput(0)
+
+    return {
+      psbt: psbt.toBase64(),
+      psbtHex: psbt.extractTransaction().toHex(),
+      fee: revealTxChange,
+    }
   } catch (error) {
     throw new OylTransactionError(error)
   }
@@ -558,8 +693,10 @@ export const findRuneUtxos = async ({
 
         if (
           inscriptionsOnOutput.inscriptions.length > 0 ||
-          inscriptionsOnOutput.runes.length > 1 ||
-          hasRune?.rune_ids.length > 1
+          Array.isArray(inscriptionsOnOutput.runes)
+            ? Number(inscriptionsOnOutput.runes.length) > 1
+            : Object.keys(inscriptionsOnOutput.runes).length > 1 ||
+              hasRune?.rune_ids.length > 1
         ) {
           throw new Error(
             'Unable to send from UTXO with multiple inscriptions. Split UTXO before sending.'
@@ -592,6 +729,7 @@ export const findRuneUtxos = async ({
 }
 
 export const actualSendFee = async ({
+  gatheredUtxos,
   account,
   runeId,
   provider,
@@ -601,6 +739,7 @@ export const actualSendFee = async ({
   feeRate,
   signer,
 }: {
+  gatheredUtxos: GatheredUtxos
   account: Account
   runeId: string
   provider: Provider
@@ -615,6 +754,7 @@ export const actualSendFee = async ({
   }
 
   const { psbt } = await createSendPsbt({
+    gatheredUtxos,
     account,
     runeId,
     provider,
@@ -642,6 +782,7 @@ export const actualSendFee = async ({
   const correctFee = vsize * feeRate
 
   const { psbt: finalPsbt } = await createSendPsbt({
+    gatheredUtxos,
     account,
     runeId,
     provider,
@@ -673,12 +814,14 @@ export const actualSendFee = async ({
 }
 
 export const actualMintFee = async ({
+  gatheredUtxos,
   account,
   runeId,
   provider,
   feeRate,
   signer,
 }: {
+  gatheredUtxos: GatheredUtxos
   account: Account
   runeId: string
   provider: Provider
@@ -690,6 +833,7 @@ export const actualMintFee = async ({
   }
 
   const { psbt } = await createMintPsbt({
+    gatheredUtxos,
     account,
     runeId,
     provider,
@@ -714,6 +858,7 @@ export const actualMintFee = async ({
   const correctFee = vsize * feeRate
 
   const { psbt: finalPsbt } = await createMintPsbt({
+    gatheredUtxos,
     account,
     runeId,
     provider,
@@ -741,27 +886,21 @@ export const actualMintFee = async ({
   return { fee: finalFee }
 }
 
-export const actualEtchFee = async ({
+export const actualEtchCommitFee = async ({
+  tweakedTaprootKeyPair,
+  taprootKeyPair,
+  gatheredUtxos,
   account,
-  symbol,
-  cap,
-  premine,
-  perMintAmount,
-  turbo,
-  divisibility,
   runeName,
   provider,
   feeRate,
   signer,
 }: {
-  symbol: string
-  cap?: number
-  premine?: number
-  perMintAmount: number
-  turbo?: boolean
-  divisibility?: number
-  runeName: string
+  tweakedTaprootKeyPair: bitcoin.Signer
+  taprootKeyPair: bitcoin.Signer
+  gatheredUtxos: GatheredUtxos
   account: Account
+  runeName: string
   provider: Provider
   feeRate?: number
   signer: Signer
@@ -770,19 +909,15 @@ export const actualEtchFee = async ({
     feeRate = (await provider.esplora.getFeeEstimates())['1']
   }
 
-  const { psbt } = await createEtchPsbt({
-    symbol,
-    cap,
-    premine,
-    perMintAmount,
-    turbo,
-    divisibility,
+  const { psbt } = await createEtchCommit({
+    gatheredUtxos,
+    taprootKeyPair,
+    tweakedTaprootKeyPair,
     runeName,
     account,
     provider,
     feeRate,
   })
-
   const { signedPsbt } = await signer.signAllInputs({
     rawPsbt: psbt,
     finalize: true,
@@ -800,7 +935,82 @@ export const actualEtchFee = async ({
 
   const correctFee = vsize * feeRate
 
-  const { psbt: finalPsbt } = await createEtchPsbt({
+  const { psbt: finalPsbt } = await createEtchCommit({
+    gatheredUtxos,
+    taprootKeyPair,
+    tweakedTaprootKeyPair,
+    runeName,
+    account,
+    provider,
+    feeRate,
+    fee: correctFee,
+  })
+
+  const { signedPsbt: signedAll } = await signer.signAllInputs({
+    rawPsbt: finalPsbt,
+    finalize: true,
+  })
+
+  let finalRawPsbt = bitcoin.Psbt.fromBase64(signedAll, {
+    network: account.network,
+  })
+
+  const finalSignedHexPsbt = finalRawPsbt.extractTransaction().toHex()
+
+  const finalVsize = (
+    await provider.sandshrew.bitcoindRpc.testMemPoolAccept([finalSignedHexPsbt])
+  )[0].vsize
+
+  const finalFee = finalVsize * feeRate
+
+  return { fee: finalFee }
+}
+
+export const actualEtchRevealFee = async ({
+  tweakedTaprootKeyPair,
+  taprootKeyPair,
+  symbol,
+  cap,
+  premine,
+  perMintAmount,
+  turbo,
+  divisibility,
+  runeName,
+  commitTxId,
+  receiverAddress,
+  script,
+  account,
+  provider,
+  feeRate,
+  signer,
+}: {
+  tweakedTaprootKeyPair: bitcoin.Signer
+  taprootKeyPair: bitcoin.Signer
+  symbol: string
+  cap: bigint
+  premine: bigint
+  perMintAmount: bigint
+  turbo: boolean
+  divisibility: number
+  runeName: string
+  commitTxId: string
+  receiverAddress: string
+  script: Buffer
+  account: Account
+  provider: Provider
+  feeRate?: number
+  signer: Signer
+}) => {
+  if (!feeRate) {
+    feeRate = (await provider.esplora.getFeeEstimates())['1']
+  }
+
+  const { psbt } = await createEtchReveal({
+    taprootKeyPair,
+    commitTxId,
+    receiverAddress,
+    script,
+    tweakedTaprootKeyPair,
     symbol,
     cap,
     premine,
@@ -808,7 +1018,39 @@ export const actualEtchFee = async ({
     turbo,
     divisibility,
     runeName,
-    account,
+    provider,
+    feeRate,
+  })
+  const { signedPsbt } = await signer.signAllInputs({
+    rawPsbt: psbt,
+    finalize: true,
+  })
+
+  let rawPsbt = bitcoin.Psbt.fromBase64(signedPsbt, {
+    network: account.network,
+  })
+
+  const signedHexPsbt = rawPsbt.extractTransaction().toHex()
+
+  const vsize = (
+    await provider.sandshrew.bitcoindRpc.testMemPoolAccept([signedHexPsbt])
+  )[0].vsize
+
+  const correctFee = vsize * feeRate
+
+  const { psbt: finalPsbt } = await createEtchReveal({
+    taprootKeyPair,
+    commitTxId,
+    receiverAddress,
+    script,
+    tweakedTaprootKeyPair,
+    symbol,
+    cap,
+    premine,
+    perMintAmount,
+    turbo,
+    divisibility,
+    runeName,
     provider,
     feeRate,
     fee: correctFee,
@@ -835,6 +1077,7 @@ export const actualEtchFee = async ({
 }
 
 export const send = async ({
+  gatheredUtxos,
   toAddress,
   amount,
   runeId,
@@ -844,6 +1087,7 @@ export const send = async ({
   provider,
   signer,
 }: {
+  gatheredUtxos: GatheredUtxos
   toAddress: string
   amount: number
   runeId: string
@@ -857,6 +1101,7 @@ export const send = async ({
     inscriptionAddress = account.taproot.address
   }
   const { fee } = await actualSendFee({
+    gatheredUtxos,
     account,
     runeId,
     amount,
@@ -868,6 +1113,7 @@ export const send = async ({
   })
 
   const { psbt: finalPsbt } = await createSendPsbt({
+    gatheredUtxos,
     account,
     runeId,
     amount,
@@ -891,12 +1137,14 @@ export const send = async ({
 }
 
 export const mint = async ({
+  gatheredUtxos,
   account,
   runeId,
   provider,
   feeRate,
   signer,
 }: {
+  gatheredUtxos: GatheredUtxos
   account: Account
   runeId: string
   provider: Provider
@@ -904,6 +1152,7 @@ export const mint = async ({
   signer: Signer
 }) => {
   const { fee } = await actualMintFee({
+    gatheredUtxos,
     account,
     runeId,
     provider,
@@ -912,6 +1161,7 @@ export const mint = async ({
   })
 
   const { psbt: finalPsbt } = await createMintPsbt({
+    gatheredUtxos,
     account,
     runeId,
     provider,
@@ -931,13 +1181,70 @@ export const mint = async ({
   return result
 }
 
-export const etch = async ({
+export const etchCommit = async ({
+  gatheredUtxos,
+  runeName,
+  account,
+  provider,
+  feeRate,
+  signer,
+}: {
+  gatheredUtxos: GatheredUtxos
+  runeName: string
+  account: Account
+  provider: Provider
+  feeRate?: number
+  signer: Signer
+}) => {
+  const tweakedTaprootKeyPair: bitcoin.Signer = tweakSigner(
+    signer.taprootKeyPair,
+    {
+      network: provider.network,
+    }
+  )
+  const { fee: commitFee } = await actualEtchCommitFee({
+    gatheredUtxos,
+    taprootKeyPair: signer.taprootKeyPair,
+    tweakedTaprootKeyPair,
+    runeName,
+    account,
+    provider,
+    feeRate,
+    signer,
+  })
+
+  const { psbt: finalPsbt, script } = await createEtchCommit({
+    gatheredUtxos,
+    taprootKeyPair: signer.taprootKeyPair,
+    tweakedTaprootKeyPair,
+    runeName,
+    account,
+    provider,
+    feeRate,
+    fee: commitFee,
+  })
+
+  const { signedPsbt } = await signer.signAllInputs({
+    rawPsbt: finalPsbt,
+    finalize: true,
+  })
+
+  const result = await provider.pushPsbt({
+    psbtBase64: signedPsbt,
+  })
+
+  return { ...result, script: script.toString('hex') }
+}
+
+export const etchReveal = async ({
   symbol,
   cap,
   premine,
   perMintAmount,
   turbo,
   divisibility,
+  commitTxId,
+  script,
   runeName,
   account,
   provider,
@@ -945,18 +1252,32 @@ export const etch = async ({
   signer,
 }: {
   symbol: string
-  cap?: number
-  premine?: number
-  perMintAmount: number
+  cap?: bigint
+  premine?: bigint
+  perMintAmount: bigint
   turbo?: boolean
   divisibility?: number
+  commitTxId: string
+  script: string
   runeName: string
   account: Account
   provider: Provider
   feeRate?: number
   signer: Signer
 }) => {
-  const { fee } = await actualEtchFee({
+  const tweakedTaprootKeyPair: bitcoin.Signer = tweakSigner(
+    signer.taprootKeyPair,
+    {
+      network: provider.network,
+    }
+  )
+
+  const { fee } = await actualEtchRevealFee({
+    taprootKeyPair: signer.taprootKeyPair,
+    tweakedTaprootKeyPair,
+    receiverAddress: account.taproot.address,
+    commitTxId,
+    script: Buffer.from(script, 'hex'),
     symbol,
     cap,
     premine,
@@ -970,7 +1291,12 @@ export const etch = async ({
     signer,
   })
 
-  const { psbt: finalPsbt } = await createEtchPsbt({
+  const { psbt: finalRevealPsbt } = await createEtchReveal({
+    taprootKeyPair: signer.taprootKeyPair,
+    tweakedTaprootKeyPair,
+    receiverAddress: account.taproot.address,
+    commitTxId,
+    script: Buffer.from(script, 'hex'),
     symbol,
     cap,
     premine,
@@ -978,20 +1304,19 @@ export const etch = async ({
     turbo,
     divisibility,
     runeName,
-    account,
     provider,
     feeRate,
     fee,
   })
 
-  const { signedPsbt } = await signer.signAllInputs({
-    rawPsbt: finalPsbt,
+  const { signedPsbt: revealSignedPsbt } = await signer.signAllInputs({
+    rawPsbt: finalRevealPsbt,
     finalize: true,
   })
 
-  const result = await provider.pushPsbt({
-    psbtBase64: signedPsbt,
+  const revealResult = await provider.pushPsbt({
+    psbtBase64: revealSignedPsbt,
   })
 
-  return result
+  return revealResult
 }

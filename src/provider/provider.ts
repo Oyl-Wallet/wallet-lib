@@ -21,7 +21,7 @@ export const defaultNetworkOptions = (networkType: string) => {
     case 'mainnet':
       return {
         baseUrl: 'https://mainnet.sandshrew.io',
-        version: 'v1',
+        version: 'v2',
         projectId: process.env.SANDSHREW_PROJECT_ID,
         network: 'mainnet',
         apiUrl: 'https://mainnet-api.oyl.gg',
@@ -30,7 +30,7 @@ export const defaultNetworkOptions = (networkType: string) => {
     case 'regtest':
       return {
         baseUrl: 'http://localhost:3000',
-        version: 'v1',
+        version: 'v2',
         projectId: 'regtest',
         network: 'regtest',
         apiUrl: 'https://mainnet-api.oyl.gg',
@@ -39,7 +39,7 @@ export const defaultNetworkOptions = (networkType: string) => {
     case 'signet':
       return {
         baseUrl: 'https://signet.sandshrew.io',
-        version: 'v1',
+        version: 'v2',
         projectId: process.env.SANDSHREW_PROJECT_ID,
         network: 'signet',
         apiUrl: 'https://signet-api.oyl.gg',

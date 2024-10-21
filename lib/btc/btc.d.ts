@@ -1,7 +1,9 @@
 import { Provider } from '../provider/provider';
 import { Account } from '../account/account';
 import { Signer } from '../signer';
-export declare const createPsbt: ({ toAddress, amount, feeRate, account, provider, fee, }: {
+import { GatheredUtxos } from 'shared/interface';
+export declare const createPsbt: ({ gatheredUtxos, toAddress, amount, feeRate, account, provider, fee, }: {
+    gatheredUtxos?: GatheredUtxos;
     toAddress: string;
     feeRate: number;
     amount: number;
@@ -12,7 +14,8 @@ export declare const createPsbt: ({ toAddress, amount, feeRate, account, provide
     psbt: string;
     fee: number;
 }>;
-export declare const send: ({ toAddress, amount, feeRate, account, provider, signer, fee, }: {
+export declare const send: ({ gatheredUtxos, toAddress, amount, feeRate, account, provider, signer, fee, }: {
+    gatheredUtxos: GatheredUtxos;
     toAddress: string;
     amount: number;
     feeRate: number;
@@ -28,7 +31,8 @@ export declare const send: ({ toAddress, amount, feeRate, account, provider, sig
     fee: number;
     satsPerVByte: string;
 }>;
-export declare const actualFee: ({ toAddress, amount, feeRate, account, provider, signer, }: {
+export declare const actualFee: ({ gatheredUtxos, toAddress, amount, feeRate, account, provider, signer, }: {
+    gatheredUtxos: GatheredUtxos;
     toAddress: string;
     feeRate: number;
     amount: number;

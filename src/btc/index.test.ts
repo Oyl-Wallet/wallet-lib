@@ -1,60 +1,60 @@
 import * as bitcoin from 'bitcoinjs-lib'
-import { createPsbt } from './btc'
-import * as utxo from '../utxo/utxo'
+import { createPsbt, send } from './btc'
 import { Account, mnemonicToAccount } from '../account/account'
-import { Opts, mainnetMnemonic } from '../shared/constants'
 import { Provider } from '../provider/provider'
-import * as dotenv from 'dotenv'
-
-dotenv.config()
+import { GatheredUtxos } from 'shared/interface'
 
 const provider = new Provider({
-  url: 'https://mainnet.sandshrew.io',
-  projectId: process.env.SANDSHREW_PROJECT_ID!,
-  network: bitcoin.networks.bitcoin,
+  url: '',
+  projectId: '',
+  network: bitcoin.networks.regtest,
   networkType: 'mainnet',
 })
 
 const account: Account = mnemonicToAccount({
-  mnemonic: mainnetMnemonic,
-  opts: Opts,
+  mnemonic:
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+  opts: { index: 0, network: bitcoin.networks.regtest },
 })
+
 const { address } = bitcoin.payments.p2wpkh({
   pubkey: Buffer.from(account.nativeSegwit.pubkey, 'hex'),
+  network: bitcoin.networks.regtest,
 })
-const { output } = bitcoin.payments.p2wpkh({ address })
+const { output } = bitcoin.payments.p2wpkh({
+  address,
+  network: bitcoin.networks.regtest,
+})
 const scriptPk = output.toString('hex')
 
-jest.mock('../provider/provider', () => ({
-  Provider: jest.fn().mockImplementation(() => ({
-    esplora: {
-      getFeeEstimates: jest.fn().mockResolvedValue({ '1': 100 }),
-    },
-  })),
-}))
-
-jest.spyOn(utxo, 'accountSpendableUtxos').mockResolvedValue({
-  totalAmount: 20000,
+const testFormattedUtxos: GatheredUtxos = {
   utxos: [
     {
-      txId: 'e3c3b1c9e5a45b4f6c7e1a9c3d6e2a7d8f9b0c3a5c7e4f6d7e1a8b9c0a1b2c3d',
+      txId: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
       outputIndex: 0,
-      satoshis: 20000,
-      scriptPk: scriptPk,
-      address,
+      satoshis: 100000,
+      confirmations: 3,
+      scriptPk,
+      address: account.nativeSegwit.address,
       inscriptions: [],
-      confirmations: 1,
+    },
+    {
+      txId: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b275',
+      outputIndex: 0,
+      satoshis: 100000,
+      confirmations: 3,
+      scriptPk,
+      address: account.nativeSegwit.address,
+      inscriptions: [],
     },
   ],
-})
+  totalAmount: 200000,
+}
 
 describe('btc sendTx', () => {
-  beforeEach(() => {
-    jest.resetModules()
-  })
-
-  it('creates a transaction successfully', async () => {
+  it('construct psbt', async () => {
     const result = await createPsbt({
+      gatheredUtxos: testFormattedUtxos,
       toAddress: address,
       amount: 3000,
       feeRate: 10,
@@ -63,11 +63,5 @@ describe('btc sendTx', () => {
     })
 
     expect(result.psbt).toBeDefined()
-
-    expect(utxo.accountSpendableUtxos).toHaveBeenCalledWith({
-      account: account,
-      provider: provider,
-      spendAmount: 4540,
-    })
   })
 })

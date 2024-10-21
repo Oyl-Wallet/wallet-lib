@@ -13,6 +13,7 @@ import {
 } from './regtestApi'
 import { Account, SpendStrategy } from '../account'
 import { GetSellerPsbtRequest, SubmitBuyerPsbtRequest } from '../swap/types'
+import { AccountUtxoPortfolio } from '@utxo/utxo'
 
 /**
  * Represents the client for interacting with the Oyl API.
@@ -297,7 +298,7 @@ export class OylApiClient {
    * Get account utxos.
    * @param account - The account object to get utxos for.
    */
-  async getAccountUtxos(account: Account): Promise<any> {
+  async getAccountUtxos(account: Account): Promise<AccountUtxoPortfolio> {
     const stringifiedAccount = JSON.stringify(account)
     const res = await this._call('/get-account-utxos', 'post', {
       account: stringifiedAccount,
@@ -324,6 +325,43 @@ export class OylApiClient {
     const res = await this._call('/get-address-utxos', 'post', {
       address: address,
       spendStrategy: stringifiedSpendStrategy,
+    })
+    if (res.data) {
+      return res.data
+    } else {
+      return res
+    }
+  }
+
+  /**
+   * Get account balance.
+   * @param account - The stringified account object to get balance for.
+   */
+  async getaccountUtxos(account: string, spendAmount?: number): Promise<any> {
+    const res = await this._call('/get-account-spendable-utxos', 'post', {
+      account,
+      spendAmount,
+    })
+    if (res.data) {
+      return res.data
+    } else {
+      return res
+    }
+  }
+
+  /**
+   * Get account balance.
+   * @param address - The stringified account object to get balance for.
+   */
+  async getaddressUtxos(
+    address: string,
+    spendAmount?: number,
+    spendStrategy?: string
+  ): Promise<any> {
+    const res = await this._call('/get-address-spendable-utxos', 'post', {
+      address,
+      spendAmount,
+      spendStrategy,
     })
     if (res.data) {
       return res.data

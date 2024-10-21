@@ -1,13 +1,13 @@
 import { Provider } from '../provider';
-import { Account, SpendStrategy } from '../account';
+import { Account, AddressKey, SpendStrategy } from '../account';
 export interface EsploraUtxo {
     txid: string;
     vout: number;
     status: {
         confirmed: boolean;
-        block_height: number;
-        block_hash: string;
-        block_time: number;
+        block_height?: number;
+        block_hash?: string;
+        block_time?: number;
     };
     value: number;
 }
@@ -20,7 +20,7 @@ export interface FormattedUtxo {
     inscriptions: any[];
     confirmations: number;
 }
-export interface AddressPortfolio {
+export interface AddressUtxoPortfolio {
     spendableTotalBalance: number;
     spendableUtxos: FormattedUtxo[];
     runeUtxos: FormattedUtxo[];
@@ -28,6 +28,13 @@ export interface AddressPortfolio {
     pendingUtxos: FormattedUtxo[];
     pendingTotalBalance: number;
     totalBalance: number;
+}
+export interface AccountUtxoPortfolio {
+    accountTotalBalance: number;
+    accountSpendableTotalUtxos: FormattedUtxo[];
+    accountSpendableTotalBalance: number;
+    accountPendingTotalBalance: number;
+    accounts: Record<AddressKey, AddressUtxoPortfolio>;
 }
 export declare const accountBalance: ({ account, provider, }: {
     account: Account;
@@ -66,13 +73,8 @@ export declare const addressUtxos: ({ address, provider, spendStrategy, }: {
     address: string;
     provider: Provider;
     spendStrategy?: SpendStrategy;
-}) => Promise<AddressPortfolio>;
+}) => Promise<AddressUtxoPortfolio>;
 export declare const accountUtxos: ({ account, provider, }: {
     account: Account;
     provider: Provider;
-}) => Promise<{
-    accountTotalBalance: number;
-    accountSpendableTotalBalance: number;
-    accountPendingTotalBalance: number;
-    accounts: {};
-}>;
+}) => Promise<AccountUtxoPortfolio>;

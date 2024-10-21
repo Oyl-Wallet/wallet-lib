@@ -60,7 +60,7 @@ If you want the program to be isolated to only this enviornment use the local sc
 $ yarn oyl --help
 ```
 
-e.g. `oyl utxos addressSpendableUtxos -a bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx -p regtest`.
+e.g. `oyl utxos addressUtxos -a bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx -p regtest`.
 For more detailed instructions on how to use the cli, refer to the README.md found in the cli directory.
 
 ## Contributing

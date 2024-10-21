@@ -1,10 +1,10 @@
 import { OylTransactionError } from '../errors'
 import { Provider } from '../provider/provider'
 import * as bitcoin from 'bitcoinjs-lib'
-import { FormattedUtxo, accountSpendableUtxos } from '../utxo/utxo'
 import {
   calculateTaprootTxSize,
   createInscriptionScript,
+  findXAmountOfSats,
   formatInputsToSign,
   getFee,
   getOutputValueByVOutIndex,
@@ -17,14 +17,18 @@ import { toXOnly } from 'bitcoinjs-lib/src/psbt/bip371'
 import { LEAF_VERSION_TAPSCRIPT } from 'bitcoinjs-lib/src/payments/bip341'
 import { getAddressType } from '../shared/utils'
 import { Signer } from '../signer'
+import { GatheredUtxos } from 'shared/interface'
+import { accountSpendableUtxos } from '../utxo'
 
 export const transferEstimate = async ({
+  gatheredUtxos,
   toAddress,
   feeRate,
   account,
   provider,
   fee,
 }: {
+  gatheredUtxos: GatheredUtxos
   toAddress: string
   feeRate: number
   account: Account
@@ -44,17 +48,7 @@ export const transferEstimate = async ({
     let calculatedFee = minFee * feeRate < 250 ? 250 : minFee * feeRate
     let finalFee = fee ? fee : calculatedFee
 
-    const gatheredUtxos: {
-      totalAmount: number
-      utxos: FormattedUtxo[]
-    } = await accountSpendableUtxos({
-      account,
-      provider,
-      spendAmount: finalFee + 546,
-    })
-
     let utxosToSend = gatheredUtxos
-
     if (!fee && gatheredUtxos.utxos.length > 1) {
       const txSize = minimumFee({
         taprootInputCount: gatheredUtxos.utxos.length,
@@ -64,12 +58,12 @@ export const transferEstimate = async ({
       finalFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
 
       if (gatheredUtxos.totalAmount < finalFee + 546) {
-        utxosToSend = await accountSpendableUtxos({
-          account,
-          provider,
-          spendAmount: finalFee + 546,
-        })
+        throw new OylTransactionError(Error('Insufficient Balance'))
       }
+    }
+
+    if (gatheredUtxos.totalAmount < finalFee + 546) {
+      throw new OylTransactionError(Error('Insufficient Balance'))
     }
 
     for (let i = 0; i < gatheredUtxos.utxos.length; i++) {
@@ -124,9 +118,7 @@ export const transferEstimate = async ({
       address: toAddress,
       value: 546,
     })
-    if (gatheredUtxos.totalAmount < finalFee + 546) {
-      throw new OylTransactionError(Error('Insufficient Balance'))
-    }
+
     const changeAmount = utxosToSend.totalAmount - (finalFee + 546)
 
     psbt.addOutput({
@@ -147,15 +139,17 @@ export const transferEstimate = async ({
 }
 
 export const commit = async ({
+  gatheredUtxos,
   ticker,
   amount,
   feeRate,
   account,
   tweakedTaprootPublicKey,
   provider,
+  finalTransferFee,
   fee,
-  finalSendFee,
 }: {
+  gatheredUtxos: GatheredUtxos
   ticker: string
   amount: number
   feeRate: number
@@ -163,7 +157,7 @@ export const commit = async ({
   tweakedTaprootPublicKey: Buffer
   provider: Provider
   fee?: number
-  finalSendFee?: number
+  finalTransferFee?: number
 }) => {
   try {
     const content = `{"p":"brc-20","op":"transfer","tick":"${ticker}","amt":"${amount}"}`
@@ -184,15 +178,6 @@ export const commit = async ({
 
     let finalFee = fee ? fee + Number(feeForReveal) + 546 : baseEstimate
 
-    let gatheredUtxos: {
-      totalAmount: number
-      utxos: FormattedUtxo[]
-    } = await accountSpendableUtxos({
-      account,
-      provider,
-      spendAmount: finalFee + finalSendFee,
-    })
-
     const script = createInscriptionScript(tweakedTaprootPublicKey, content)
 
     const outputScript = bitcoin.script.compile(script)
@@ -208,6 +193,19 @@ export const commit = async ({
       address: inscriberInfo.address,
     })
 
+    if (!gatheredUtxos) {
+      gatheredUtxos = await accountSpendableUtxos({
+        account,
+        provider,
+        spendAmount: finalFee + finalTransferFee,
+      })
+    }
+
+    gatheredUtxos = findXAmountOfSats(
+      gatheredUtxos.utxos,
+      finalFee + finalTransferFee
+    )
+
     if (!fee && gatheredUtxos.utxos.length > 1) {
       const txSize = minimumFee({
         taprootInputCount: gatheredUtxos.utxos.length,
@@ -215,13 +213,12 @@ export const commit = async ({
         outputCount: 2,
       })
       finalFee = txSize * feeRate < 250 ? 250 : txSize * feeRate
-
+      gatheredUtxos = findXAmountOfSats(
+        gatheredUtxos.utxos,
+        finalFee + finalTransferFee
+      )
       if (gatheredUtxos.totalAmount < finalFee) {
-        gatheredUtxos = await accountSpendableUtxos({
-          account,
-          provider,
-          spendAmount: finalFee,
-        })
+        throw new OylTransactionError(Error('Insufficient Balance'))
       }
     }
 
@@ -409,8 +406,10 @@ export const transfer = async ({
       feeRate = (await provider.esplora.getFeeEstimates())['1']
     }
     const psbt: bitcoin.Psbt = new bitcoin.Psbt({ network: provider.network })
-    const utxoInfo = await provider.esplora.getTxInfo(commitChangeUtxoId)
-    const revealInfo = await provider.esplora.getTxInfo(revealTxId)
+    const [utxoInfo, revealInfo] = await provider.sandshrew.multiCall([
+      ['esplora_tx', [commitChangeUtxoId]],
+      ['esplora_tx', [revealTxId]],
+    ])
     const minFee = minimumFee({
       taprootInputCount: 2,
       nonTaprootInputCount: 0,
@@ -424,58 +423,70 @@ export const transfer = async ({
       hash: revealTxId,
       index: 0,
       witnessUtxo: {
-        script: Buffer.from(revealInfo.vout[0].scriptpubkey, 'hex'),
+        script: Buffer.from(revealInfo.result.vout[0].scriptpubkey, 'hex'),
         value: 546,
       },
     })
 
-    for (let i = 1; i < utxoInfo.vout.length; i++) {
-      if (getAddressType(utxoInfo.vout[i].scriptpubkey_address) === 0) {
-        const previousTxHex: string = await provider.esplora.getTxHex(
-          commitChangeUtxoId
-        )
-        psbt.addInput({
-          hash: commitChangeUtxoId,
-          index: i,
-          nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
-        })
-      }
-      if (getAddressType(utxoInfo.vout[i].scriptpubkey_address) === 2) {
-        const redeemScript = bitcoin.script.compile([
-          bitcoin.opcodes.OP_0,
-          bitcoin.crypto.hash160(
-            Buffer.from(account.nestedSegwit.pubkey, 'hex')
-          ),
-        ])
+    const allAddresses = [
+      account.taproot.address,
+      account.nativeSegwit.address,
+      account.nestedSegwit.address,
+      account.legacy.address,
+    ]
+    for (let i = 0; i < utxoInfo.result.vout.length; i++) {
+      if (allAddresses.includes(utxoInfo.result.vout[i].scriptpubkey_address)) {
+        if (
+          getAddressType(utxoInfo.result.vout[i].scriptpubkey_address) === 0
+        ) {
+          const previousTxHex: string = await provider.esplora.getTxHex(
+            commitChangeUtxoId
+          )
+          psbt.addInput({
+            hash: commitChangeUtxoId,
+            index: i,
+            nonWitnessUtxo: Buffer.from(previousTxHex, 'hex'),
+          })
+        }
+        if (
+          getAddressType(utxoInfo.result.vout[i].scriptpubkey_address) === 2
+        ) {
+          const redeemScript = bitcoin.script.compile([
+            bitcoin.opcodes.OP_0,
+            bitcoin.crypto.hash160(
+              Buffer.from(account.nestedSegwit.pubkey, 'hex')
+            ),
+          ])
 
-        psbt.addInput({
-          hash: commitChangeUtxoId,
-          index: i,
-          redeemScript: redeemScript,
-          witnessUtxo: {
-            value: utxoInfo.vout[i].value,
-            script: bitcoin.script.compile([
-              bitcoin.opcodes.OP_HASH160,
-              bitcoin.crypto.hash160(redeemScript),
-              bitcoin.opcodes.OP_EQUAL,
-            ]),
-          },
-        })
+          psbt.addInput({
+            hash: commitChangeUtxoId,
+            index: i,
+            redeemScript: redeemScript,
+            witnessUtxo: {
+              value: utxoInfo.result.vout[i].value,
+              script: bitcoin.script.compile([
+                bitcoin.opcodes.OP_HASH160,
+                bitcoin.crypto.hash160(redeemScript),
+                bitcoin.opcodes.OP_EQUAL,
+              ]),
+            },
+          })
+        }
+        if (
+          getAddressType(utxoInfo.result.vout[i].scriptpubkey_address) === 1 ||
+          getAddressType(utxoInfo.result.vout[i].scriptpubkey_address) === 3
+        ) {
+          psbt.addInput({
+            hash: commitChangeUtxoId,
+            index: i,
+            witnessUtxo: {
+              value: utxoInfo.result.vout[i].value,
+              script: Buffer.from(utxoInfo.result.vout[i].scriptpubkey, 'hex'),
+            },
+          })
+        }
+        totalValue += utxoInfo.result.vout[i].value
       }
-      if (
-        getAddressType(utxoInfo.vout[i].scriptpubkey_address) === 1 ||
-        getAddressType(utxoInfo.vout[i].scriptpubkey_address) === 3
-      ) {
-        psbt.addInput({
-          hash: commitChangeUtxoId,
-          index: i,
-          witnessUtxo: {
-            value: utxoInfo.vout[i].value,
-            script: Buffer.from(utxoInfo.vout[i].scriptpubkey, 'hex'),
-          },
-        })
-      }
-      totalValue += utxoInfo.vout[i].value
     }
 
     psbt.addOutput({
@@ -501,6 +512,7 @@ export const transfer = async ({
 }
 
 export const send = async ({
+  gatheredUtxos,
   toAddress,
   ticker,
   amount,
@@ -509,6 +521,7 @@ export const send = async ({
   feeRate,
   signer,
 }: {
+  gatheredUtxos: GatheredUtxos
   toAddress: string
   ticker: string
   amount: number
@@ -519,6 +532,7 @@ export const send = async ({
 }) => {
   let successTxIds: string[] = []
   const estimate = await transferEstimate({
+    gatheredUtxos,
     toAddress: toAddress,
     feeRate: feeRate,
     account: account,
@@ -531,13 +545,14 @@ export const send = async ({
   const tweakedTaprootPublicKey = toXOnly(tweakedTaprootKeyPair.publicKey)
 
   const { psbt: dryCommitPsbt } = await commit({
+    gatheredUtxos,
     ticker: ticker,
     amount: amount,
     feeRate: feeRate,
     tweakedTaprootPublicKey,
     account: account,
     provider: provider,
-    finalSendFee: estimate.fee,
+    finalTransferFee: estimate.fee,
   })
 
   const { signedPsbt: commitSigned } = await signer.signAllInputs({
@@ -552,14 +567,15 @@ export const send = async ({
   })
 
   const { psbt: finalCommitPsbt, script } = await commit({
+    gatheredUtxos,
     ticker: ticker,
     amount: amount,
     feeRate: feeRate,
     tweakedTaprootPublicKey,
     account: account,
     provider: provider,
-    finalSendFee: estimate.fee,
     fee: commitFee,
+    finalTransferFee: estimate.fee,
   })
 
   const { signedPsbt: finalCommitSigned } = await signer.signAllInputs({
@@ -613,12 +629,12 @@ export const send = async ({
   })
 
   const { psbt: transferPsbt } = await transfer({
-    feeRate: feeRate,
-    account: account,
-    provider: provider,
-    revealTxId: revealTxId,
+    feeRate,
+    account,
+    provider,
+    revealTxId,
     commitChangeUtxoId: commitTxId,
-    toAddress: toAddress,
+    toAddress,
   })
 
   const { signedPsbt: transferSigned } = await signer.signAllInputs({
@@ -633,12 +649,12 @@ export const send = async ({
   })
 
   const { psbt: finalTransferPsbt } = await transfer({
-    feeRate: feeRate,
-    account: account,
-    provider: provider,
-    revealTxId: revealTxId,
+    feeRate,
+    account,
+    provider,
+    revealTxId,
     commitChangeUtxoId: commitTxId,
-    toAddress: toAddress,
+    toAddress,
     fee: transferFee,
   })
 

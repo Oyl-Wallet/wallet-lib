@@ -1,6 +1,7 @@
 import { SwapBrcBid, SignedBid, OkxBid, GetOffersParams, GetCollectionOffersParams } from '../shared/interface';
 import { Account, SpendStrategy } from '../account';
 import { GetSellerPsbtRequest, SubmitBuyerPsbtRequest } from '../swap/types';
+import { AccountUtxoPortfolio } from '@utxo/utxo';
 /**
  * Represents the client for interacting with the Oyl API.
  */
@@ -121,13 +122,23 @@ export declare class OylApiClient {
      * Get account utxos.
      * @param account - The account object to get utxos for.
      */
-    getAccountUtxos(account: Account): Promise<any>;
+    getAccountUtxos(account: Account): Promise<AccountUtxoPortfolio>;
     /**
      * Get address utxos.
      * @param address - The address to get utxos for.
      * @param spendStrategy - The spendStrategy object to use.
      */
     getAddressUtxos(address: string, spendStrategy?: SpendStrategy): Promise<any>;
+    /**
+     * Get account balance.
+     * @param account - The stringified account object to get balance for.
+     */
+    getaccountUtxos(account: string, spendAmount?: number): Promise<any>;
+    /**
+     * Get account balance.
+     * @param address - The stringified account object to get balance for.
+     */
+    getaddressUtxos(address: string, spendAmount?: number, spendStrategy?: string): Promise<any>;
     /**
      * Get collectible by ID.
      * @param id - The ID of the collectible.

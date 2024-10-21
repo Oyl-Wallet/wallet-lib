@@ -1,7 +1,8 @@
 import { Provider } from '../provider/provider'
 import * as dotenv from 'dotenv'
 import * as bitcoin from 'bitcoinjs-lib'
-import { EsploraUtxo, FormattedUtxo, addressUtxos } from './utxo'
+import { EsploraUtxo, addressUtxos } from './utxo'
+import { FormattedUtxo } from 'shared/interface'
 
 dotenv.config()
 
@@ -36,6 +37,7 @@ const testFormattedUtxos: FormattedUtxo[] = [
 ]
 
 const testEsploraUtxos: EsploraUtxo[] = [
+  // [0] Confirmed/indexed tx without inscriptions or runes
   {
     txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
     vout: 2,
@@ -48,6 +50,7 @@ const testEsploraUtxos: EsploraUtxo[] = [
     },
     value: 100000,
   },
+  // [1] Confirmed/indexed tx without inscriptions or runes
   {
     txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b275',
     vout: 0,
@@ -60,6 +63,29 @@ const testEsploraUtxos: EsploraUtxo[] = [
     },
     value: 50000,
   },
+  // [2] Confirmed tx that has not been indexed by ord
+  {
+    txid: '43c1fb9af87e2ef21d216da3e35727ee1dad32afd6fd73510fc6f42a48229a7f',
+    vout: 0,
+    status: {
+      confirmed: true,
+      block_height: 280,
+      block_hash:
+        '519a8fa6b439da658a83b231486958a26c76ca92811d1e5cc7bcb94bd574c20f',
+      block_time: 1719240701,
+    },
+    value: 546,
+  },
+  // [3] Unconfirmed tx
+  {
+    txid: 'ad90d820fc7f25e32c775ccf9f90d3669864fef436abcd44776f03d4a11540c4',
+    vout: 0,
+    status: {
+      confirmed: false,
+    },
+    value: 50000,
+  },
+  // [4] Confirmed/indexed tx with inscriptions
   {
     txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b276',
     vout: 1,
@@ -70,10 +96,11 @@ const testEsploraUtxos: EsploraUtxo[] = [
         '519a8fa6b439da658a83b231486958a26c76ca92811d1e5cc7bcb94bd574c20f',
       block_time: 1719240703,
     },
-    value: 25000,
+    value: 546,
   },
+  // [5] Confirmed/indexed tx with runes
   {
-    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b277',
+    txid: 'a24dd4edc2fdfa769ba45cb480d392b806ad12533b097c84285d808d65b9f923',
     vout: 1,
     status: {
       confirmed: true,
@@ -87,39 +114,70 @@ const testEsploraUtxos: EsploraUtxo[] = [
 ]
 
 const testOrdTxOutputs = [
+  // [0] Confirmed/indexed tx without inscriptions or runes
   {
     address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
     indexed: true,
     inscriptions: [],
-    runes: [],
+    runes: {},
+    sat_ranges: [[1956902243257152, 1956902243257698]],
+    script_pubkey:
+      'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
+    spent: false,
+    transaction:
+      '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
+    value: 100000,
+  },
+  // [1] Confirmed/indexed tx without inscriptions or runes
+  {
+    address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
+    indexed: true,
+    inscriptions: [],
+    runes: {},
     sat_ranges: [[1956902243257152, 1956902243257698]],
     script_pubkey:
       'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
     spent: false,
     transaction:
       '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b275',
-    value: 100000,
+    value: 50000,
   },
+  // [2] Confirmed tx that has not been indexed by ord
   {
     address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
-    indexed: true,
+    indexed: false,
     inscriptions: [],
-    runes: [],
-    sat_ranges: [[1956902243257152, 1956902243257698]],
+    runes: {},
+    sat_ranges: [],
     script_pubkey:
       'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
     spent: false,
     transaction:
-      '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b276',
-    value: 50000,
+      '43c1fb9af87e2ef21d216da3e35727ee1dad32afd6fd73510fc6f42a48229a7f',
+    value: 546,
   },
+  // [3] Unconfirmed tx
+  {
+    address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
+    indexed: false,
+    inscriptions: [],
+    runes: {},
+    sat_ranges: [],
+    script_pubkey:
+      'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
+    spent: false,
+    transaction:
+      'ad90d820fc7f25e32c775ccf9f90d3669864fef436abcd44776f03d4a11540c4',
+    value: 546,
+  },
+  // [4] Confirmed/indexed tx with inscriptions
   {
     address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
     indexed: true,
     inscriptions: [
       'e605df4731c8773902dd6f56bfbec815db26d530da00dbdc697e35a992269987i0',
     ],
-    runes: [],
+    runes: {},
     sat_ranges: [[1956902243257152, 1956902243257698]],
     script_pubkey:
       'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
@@ -128,63 +186,37 @@ const testOrdTxOutputs = [
       '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b277',
     value: 25000,
   },
+  // [5] Confirmed/indexed tx with runes
   {
     address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
     indexed: true,
     inscriptions: [],
-    runes: [
-      'e605df4731c8773902dd6f56bfbec815db26d530da00dbdc697e35a992269987i0',
-    ],
+    runes: {
+      RUNE: {},
+    },
     sat_ranges: [[1956902243257152, 1956902243257698]],
     script_pubkey:
       'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
     spent: false,
     transaction:
-      '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b277',
+      'a24dd4edc2fdfa769ba45cb480d392b806ad12533b097c84285d808d65b9f923',
     value: 546,
   },
 ]
 
 const testEsploraTxInfo = [
+  // [0] Confirmed/indexed tx without inscriptions or runes
   {
-    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b275',
+    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
     version: 2,
     locktime: 0,
-    vin: [
-      {
-        txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
-        vout: 0,
-        prevout: {
-          scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_asm:
-            'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_type: 'v0_p2wpkh',
-          scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-          value: 300000,
-        },
-        scriptsig: '',
-        scriptsig_asm: '',
-        witness: [
-          '3045022100fdddd5d50b61198bedbde29f784ac80b162251b4bc7d7b20f0690b7290b38101022048f2a03454278fd1e66d559630bc8959c3579c067851cd9c168474515cd6f6f101',
-          '0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c',
-        ],
-        is_coinbase: false,
-        sequence: 4294967295,
-      },
-    ],
+    vin: [],
     vout: [
+      {},
+      {},
       {
         scriptpubkey:
           'b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
-        scriptpubkey_asm:
-          'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
-        scriptpubkey_type: 'v1_p2tr',
-        scriptpubkey_address:
-          'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
-        value: 100000,
-      },
-      {
-        scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
         scriptpubkey_asm:
           'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
         scriptpubkey_type: 'v0_p2wpkh',
@@ -203,32 +235,12 @@ const testEsploraTxInfo = [
       block_time: 1719240702,
     },
   },
+  // [1] Confirmed/indexed tx without inscriptions or runes
   {
-    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b276',
+    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b275',
     version: 2,
     locktime: 0,
-    vin: [
-      {
-        txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
-        vout: 0,
-        prevout: {
-          scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_asm:
-            'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_type: 'v0_p2wpkh',
-          scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-          value: 200000,
-        },
-        scriptsig: '',
-        scriptsig_asm: '',
-        witness: [
-          '3045022100fdddd5d50b61198bedbde29f784ac80b162251b4bc7d7b20f0690b7290b38101022048f2a03454278fd1e66d559630bc8959c3579c067851cd9c168474515cd6f6f101',
-          '0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c',
-        ],
-        is_coinbase: false,
-        sequence: 4294967295,
-      },
-    ],
+    vin: [],
     vout: [
       {
         scriptpubkey:
@@ -239,14 +251,6 @@ const testEsploraTxInfo = [
         scriptpubkey_address:
           'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
         value: 50000,
-      },
-      {
-        scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-        scriptpubkey_asm:
-          'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-        scriptpubkey_type: 'v0_p2wpkh',
-        scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-        value: 150000,
       },
     ],
     size: 261,
@@ -260,32 +264,65 @@ const testEsploraTxInfo = [
       block_time: 1719240702,
     },
   },
+  // [2] Confirmed tx that has not been indexed by ord
   {
-    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b273',
+    txid: '43c1fb9af87e2ef21d216da3e35727ee1dad32afd6fd73510fc6f42a48229a7f',
     version: 2,
     locktime: 0,
-    vin: [
+    vin: [],
+    vout: [
       {
-        txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b270',
-        vout: 0,
-        prevout: {
-          scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_asm:
-            'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_type: 'v0_p2wpkh',
-          scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-          value: 200000,
-        },
-        scriptsig: '',
-        scriptsig_asm: '',
-        witness: [
-          '3045022100fdddd5d50b61198bedbde29f784ac80b162251b4bc7d7b20f0690b7290b38101022048f2a03454278fd1e66d559630bc8959c3579c067851cd9c168474515cd6f6f101',
-          '0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c',
-        ],
-        is_coinbase: false,
-        sequence: 4294967295,
+        scriptpubkey:
+          'b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
+        scriptpubkey_asm:
+          'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
+        scriptpubkey_type: 'v1_p2tr',
+        scriptpubkey_address:
+          'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
+        value: 546,
       },
     ],
+    size: 261,
+    weight: 714,
+    fee: 302,
+    status: {
+      confirmed: true,
+      block_height: 280,
+      block_hash:
+        '519a8fa6b439da658a83b231486958a26c76ca92811d1e5cc7bcb94bd574c20f',
+      block_time: 1719240702,
+    },
+  },
+  // [3] Unconfirmed tx
+  {
+    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
+    version: 2,
+    locktime: 0,
+    vin: [],
+    vout: [
+      {
+        scriptpubkey:
+          'b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
+        scriptpubkey_asm:
+          'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
+        scriptpubkey_type: 'v0_p2wpkh',
+        scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
+        value: 546,
+      },
+    ],
+    size: 261,
+    weight: 714,
+    fee: 302,
+    status: {
+      confirmed: false,
+    },
+  },
+  // [4] Confirmed/indexed tx with inscriptions
+  {
+    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b276',
+    version: 2,
+    locktime: 0,
+    vin: [],
     vout: [
       {
         scriptpubkey:
@@ -303,7 +340,7 @@ const testEsploraTxInfo = [
           'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
         scriptpubkey_type: 'v0_p2wpkh',
         scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-        value: 150000,
+        value: 546,
       },
     ],
     size: 261,
@@ -317,50 +354,21 @@ const testEsploraTxInfo = [
       block_time: 1719240702,
     },
   },
+  // [5] Confirmed/indexed tx with runes
   {
-    txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b274',
+    txid: 'a24dd4edc2fdfa769ba45cb480d392b806ad12533b097c84285d808d65b9f923',
     version: 2,
     locktime: 0,
-    vin: [
-      {
-        txid: '72e22e25fa587c01cbd0a86a5727090c9cdf12e47126c99e35b24185c395b271',
-        vout: 0,
-        prevout: {
-          scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_asm:
-            'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
-          scriptpubkey_type: 'v0_p2wpkh',
-          scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-          value: 200000,
-        },
-        scriptsig: '',
-        scriptsig_asm: '',
-        witness: [
-          '3045022100fdddd5d50b61198bedbde29f784ac80b162251b4bc7d7b20f0690b7290b38101022048f2a03454278fd1e66d559630bc8959c3579c067851cd9c168474515cd6f6f101',
-          '0330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c',
-        ],
-        is_coinbase: false,
-        sequence: 4294967295,
-      },
-    ],
+    vin: [],
     vout: [
-      {
-        scriptpubkey:
-          'b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
-        scriptpubkey_asm:
-          'OP_PUSHNUM_1 OP_PUSHBYTES_32 b7fbbedbe61b51bf4e41e3517b8232f31c64f3b67ffd2d8eecff12fc7db4cae5',
-        scriptpubkey_type: 'v1_p2tr',
-        scriptpubkey_address:
-          'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
-        value: 546,
-      },
+      {},
       {
         scriptpubkey: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
         scriptpubkey_asm:
           'OP_0 OP_PUSHBYTES_20 c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
         scriptpubkey_type: 'v0_p2wpkh',
         scriptpubkey_address: 'bcrt1qcr8te4kr609gcawutmrza0j4xv80jy8zeqchgx',
-        value: 150000,
+        value: 546,
       },
     ],
     size: 261,
@@ -376,7 +384,6 @@ const testEsploraTxInfo = [
   },
 ]
 
-const mockEsploraUtxos = jest.fn().mockResolvedValue(testEsploraUtxos)
 const mockedMultiCall = jest
   .fn()
   .mockResolvedValue([{ result: testEsploraUtxos }, { result: 283 }])
@@ -386,18 +393,17 @@ const mockOrdTxOutputs = jest
   .mockResolvedValueOnce(testOrdTxOutputs[1])
   .mockResolvedValueOnce(testOrdTxOutputs[2])
   .mockResolvedValueOnce(testOrdTxOutputs[3])
-const mockRuneOutputs = jest
-  .fn()
-  .mockResolvedValueOnce(testOrdTxOutputs[0])
-  .mockResolvedValueOnce(testOrdTxOutputs[1])
-  .mockResolvedValueOnce(testOrdTxOutputs[2])
-  .mockResolvedValueOnce(testOrdTxOutputs[3])
+  .mockResolvedValueOnce(testOrdTxOutputs[4])
+  .mockResolvedValueOnce(testOrdTxOutputs[5])
+
 const mockEsploraTxInfo = jest
   .fn()
   .mockResolvedValueOnce(testEsploraTxInfo[0])
   .mockResolvedValueOnce(testEsploraTxInfo[1])
   .mockResolvedValueOnce(testEsploraTxInfo[2])
   .mockResolvedValueOnce(testEsploraTxInfo[3])
+  .mockResolvedValueOnce(testEsploraTxInfo[4])
+  .mockResolvedValueOnce(testEsploraTxInfo[5])
 
 jest.mock('../provider/provider', () => {
   return {
@@ -407,15 +413,10 @@ jest.mock('../provider/provider', () => {
         multiCall: () => mockedMultiCall(),
       },
       esplora: {
-        getFeeEstimates: jest.fn().mockResolvedValue({ '1': 100 }),
-        getAddressUtxo: () => mockEsploraUtxos(),
         getTxInfo: () => mockEsploraTxInfo(),
       },
       ord: {
         getTxOutput: () => mockOrdTxOutputs(),
-      },
-      api: {
-        getOutputRune: () => mockRuneOutputs(),
       },
     })),
   }
@@ -427,8 +428,8 @@ describe('utxo', () => {
       address: 'bc1pklamaklxrdgm7njpudghhq3j7vwxfuak0l7jmrhvluf0cld5etjsga00nj',
       provider: provider,
     })
+
     expect(result.spendableUtxos).toEqual(testFormattedUtxos)
     expect(result.spendableTotalBalance).toEqual(150000)
-    expect(result.totalBalance).toEqual(175546)
   })
 })

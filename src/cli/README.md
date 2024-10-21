@@ -54,8 +54,8 @@ The available namespaces list will grow as new protocols are implemented.
   - privateKeys
 - utxo
   - availableBalance
-  - accountSpendableUtxos
-  - addressSpendableUtxos
+  - accountUtxos
+  - addressUtxos
 - btc
   - send
 - collectible
