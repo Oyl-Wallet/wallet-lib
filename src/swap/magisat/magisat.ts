@@ -84,7 +84,7 @@ export async function magisatSwap ({
     const sellerPsbt: GetSellerPsbtResponse = sellerPsbtResponse.data;
     const {signedPsbt} = await signer.signAllInputs({
         rawPsbtHex: sellerPsbt.psbt,
-        finalize: false,
+        finalize: true,
     })
 
     const magisatSubmitBuyerPsbt: SubmitBuyerPsbtRequest = {
