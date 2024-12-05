@@ -970,6 +970,27 @@ const marketPlaceBuy = new Command('buy')
     // console.log(signedTxs)
   })
 
+  /* @dev example call 
+  oyl collectible find \
+  --address bc1q90ly9f57xa6349nhdjq4zwguq4w2rdrqgfgtd7 \
+  --inscriptionId 32c99ef2048481d70040c7338e50bc9682de389506a55448b051ef8d893aee6ei0 \
+  --provider bitcoin
+*/
+const findCollectible = new Command('find')
+  .description('Returns txid, voutIndex, and data for a collectible')
+  .requiredOption('-a, --address <address>', 'address you want to get utxos for')
+  .requiredOption('-p, --provider <provider>', 'provider to use when querying the network')
+  .requiredOption('-i, --inscriptionId <inscriptionId>', 'inscriptionId you want to get data for')
+  .action(async (options) => {
+    const provider: Provider = defaultProvider[options.provider]
+    const { txId, voutIndex, data } = await collectible.findCollectible({
+      address: options.address,
+      provider,
+      inscriptionId: options.inscriptionId,
+    })
+    console.log(txId, voutIndex, data)
+})
+
 const accountCommand = new Command('account')
   .description('Manage accounts')
   .addCommand(mnemonicToAccountCommand)
@@ -993,6 +1014,7 @@ const brc20Command = new Command('brc20')
 const collectibleCommand = new Command('collectible')
   .description('Functions for collectibles')
   .addCommand(collectibleSend)
+  .addCommand(findCollectible)
 const runeCommand = new Command('rune')
   .description('Functions for runes')
   .addCommand(runeSend)
