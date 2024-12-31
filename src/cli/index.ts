@@ -1111,7 +1111,7 @@ const alkanesProvider = new Command('alkanes')
     'parameters for the api method you are calling.'
   )
   /* @dev example call
-    oyl provider alkanes -method getAlkanesByAddress -params '{"address":"brct21...", protocolTag:"1"}' -p regtest
+    oyl provider alkanes -method getAlkanesByAddress -params '{"address":"brct21...", "protocolTag":"1"}' -p regtest
     please note the json format if you need to pass an object.
 
        oyl provider alkanes -method simulate -params '{ "alkanes": [],"transaction": "0x", "block": "0x", "height": "20000", "txindex": 0, "target": {"block": "2", "tx": "1"}, "inputs": ["101"],"pointer": 0, "refundPointer": 0, "vout": 0}' -p regtest

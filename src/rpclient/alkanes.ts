@@ -103,8 +103,8 @@ export class AlkanesRpc {
   }): Promise<AlkanesResponse> {
     return await this._call('alkanes_protorunesbyaddress', [
       {
-        address,
         protocolTag,
+        address,
       },
     ])
   }
@@ -133,7 +133,7 @@ export class AlkanesRpc {
     protocolTag?: string
   }): Promise<any> {
     return await this._call('alkanes_protorunesbyoutpoint', [
-      { txid: '0x' + txid, vout, protocolTag },
+      { protocolTag, txid, vout },
     ])
   }
 
@@ -166,3 +166,18 @@ export class AlkanesRpc {
     }
   }
 }
+
+// new AlkanesRpc('http://localhost:3000/v1/regtest')
+//   .getAlkanesByAddress({
+//     address: 'bcrt1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqvg32hk',
+//     protocolTag: '1',
+//   })
+//   .then((ret) => console.log(ret))
+
+new AlkanesRpc('http://localhost:3000/v1/regtest')
+  .getAlkanesByOutpoint({
+    txid: 'de4898a4f2fad024252dabd19846351adaa5592887d69bba9120902c70018deb',
+    vout: 3,
+    protocolTag: '1',
+  })
+  .then((ret) => console.log(ret))

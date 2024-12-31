@@ -318,12 +318,17 @@ export const createExecutePsbt = async ({
       }
     }
 
+    psbt.addOutput({
+      value: 546,
+      address: account.taproot.address,
+    })
+
     const script = encodeRunestoneProtostone({
       protostones: [
         envelope.ProtoStone.message({
           protocolTag: 1n,
           edicts: [],
-          pointer: 1,
+          pointer: 0,
           refundPointer: 0,
           calldata: envelope.encipher(calldata),
         }),
@@ -557,7 +562,7 @@ export const createDeployReveal = async ({
         envelope.ProtoStone.message({
           protocolTag: 1n,
           edicts: [],
-          pointer: 1,
+          pointer: 0,
           refundPointer: 0,
           calldata: envelope.encipher([
             BigInt(3),
@@ -594,13 +599,13 @@ export const createDeployReveal = async ({
     })
 
     psbt.addOutput({
-      value: 0,
-      script: protostone,
+      value: 546,
+      address: receiverAddress,
     })
 
     psbt.addOutput({
-      value: 546,
-      address: receiverAddress,
+      value: 0,
+      script: protostone,
     })
     if (revealTxChange > 546) {
       psbt.addOutput({
