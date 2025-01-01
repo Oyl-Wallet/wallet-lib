@@ -2,7 +2,7 @@
 import { Provider } from '../provider/provider';
 import * as bitcoin from 'bitcoinjs-lib';
 import { Account } from '../account/account';
-import { GatheredUtxos } from '../shared/interface';
+import { GatheredUtxos, AlkanesPayload } from '../shared/interface';
 import { Signer } from '../signer';
 export declare const createExecutePsbt: ({ gatheredUtxos, account, calldata, provider, feeRate, fee, }: {
     gatheredUtxos: GatheredUtxos;
@@ -15,7 +15,8 @@ export declare const createExecutePsbt: ({ gatheredUtxos, account, calldata, pro
     psbt: string;
     psbtHex: string;
 }>;
-export declare const createDeployCommit: ({ gatheredUtxos, tweakedTaprootKeyPair, account, provider, feeRate, fee, }: {
+export declare const createDeployCommit: ({ payload, gatheredUtxos, tweakedTaprootKeyPair, account, provider, feeRate, fee, }: {
+    payload?: AlkanesPayload;
     gatheredUtxos: GatheredUtxos;
     tweakedTaprootKeyPair: bitcoin.Signer;
     account: Account;
@@ -40,7 +41,8 @@ export declare const createDeployReveal: ({ createReserveNumber, receiverAddress
     psbtHex: string;
     fee: number;
 }>;
-export declare const actualDeployCommitFee: ({ tweakedTaprootKeyPair, gatheredUtxos, account, provider, feeRate, signer, }: {
+export declare const actualDeployCommitFee: ({ payload, tweakedTaprootKeyPair, gatheredUtxos, account, provider, feeRate, signer, }: {
+    payload?: AlkanesPayload;
     tweakedTaprootKeyPair: bitcoin.Signer;
     gatheredUtxos: GatheredUtxos;
     account: Account;
@@ -71,7 +73,8 @@ export declare const actualExecuteFee: ({ gatheredUtxos, account, calldata, prov
 }) => Promise<{
     fee: number;
 }>;
-export declare const deployCommit: ({ gatheredUtxos, account, provider, feeRate, signer, }: {
+export declare const deployCommit: ({ payload, gatheredUtxos, account, provider, feeRate, signer, }: {
+    payload?: AlkanesPayload;
     gatheredUtxos: GatheredUtxos;
     account: Account;
     provider: Provider;

@@ -21,6 +21,7 @@ import { Signer } from '..'
 import { AssetType, MarketplaceOffers } from '..'
 import { OylTransactionError } from '../errors'
 import { alkaneFactoryWasmDeploy } from './alkane'
+import { init } from './regtest'
 
 const defaultProvider = {
   bitcoin: new Provider({
@@ -1334,6 +1335,7 @@ const regtestCommand = new Command('regtest')
   .description('Regtest commands')
   .addCommand(fundAddress)
   .addCommand(genBlock)
+  .addCommand(init)
 
 const accountCommand = new Command('account')
   .description('Manage accounts')

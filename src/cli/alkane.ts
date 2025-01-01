@@ -36,7 +36,10 @@ export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
   .option('-feeRate, --feeRate <feeRate>', 'fee rate')
 
   .action(async (options) => {
-    const wallet = new Wallet(options);
+    const wallet = new Wallet({
+      mnemonic: options.mnemonic,
+      feeRate: options.feeRate,
+    });
 
     const contract = new Uint8Array(
       Array.from(

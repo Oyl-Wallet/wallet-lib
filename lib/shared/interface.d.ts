@@ -590,3 +590,10 @@ export type DecodedCBORValue = string | number | boolean | null | undefined | De
 export interface DecodedCBOR {
     [key: string]: DecodedCBORValue;
 }
+export interface AlkanesPayload {
+    body: Uint8Array;
+    cursed: boolean;
+    tags: {
+        contentType: string;
+    };
+}

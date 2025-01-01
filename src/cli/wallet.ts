@@ -43,11 +43,11 @@ export class Wallet {
   signer: Signer
   feeRate: number
 
-  constructor(options: WalletOptions) {
+  constructor(options?: WalletOptions) {
 
     this.mnemonic = options?.mnemonic ? options?.mnemonic : defaultMnemonic;
     this.networkType = options?.networkType ? options?.networkType : 'regtest';
-    this.provider = defaultProvider[options.networkType];
+    this.provider = defaultProvider[this.networkType];
 
     this.account = mnemonicToAccount({
       mnemonic: this.mnemonic,
