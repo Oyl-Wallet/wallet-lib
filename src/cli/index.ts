@@ -20,6 +20,7 @@ import { Provider } from '..'
 import { Signer } from '..'
 import { AssetType, MarketplaceOffers } from '..'
 import { OylTransactionError } from '../errors'
+import { alkaneFactoryWasmDeploy } from './alkane'
 
 const defaultProvider = {
   bitcoin: new Provider({
@@ -1371,6 +1372,7 @@ const alkaneCommand = new Command('alkane')
   .addCommand(alkaneExecute)
   .addCommand(alkaneToken)
   .addCommand(alkanesTrace)
+  .addCommand(alkaneFactoryWasmDeploy)
 // .addCommand(alkaneMint)
 // .addCommand(alkaneTransfer)
 

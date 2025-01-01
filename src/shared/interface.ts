@@ -684,3 +684,9 @@ export type DecodedCBORValue =
 export interface DecodedCBOR {
   [key: string]: DecodedCBORValue
 }
+
+export interface AlkanesPayload {
+  body: Uint8Array
+  cursed: boolean
+  tags: { contentType: string }
+}
