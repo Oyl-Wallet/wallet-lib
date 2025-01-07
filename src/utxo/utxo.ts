@@ -260,11 +260,6 @@ export const addressUtxos = async ({
     }
   }
 
-  const utxoSortGreatestToLeast = spendStrategy?.utxoSortGreatestToLeast ?? true
-  utxos.sort((a, b) =>
-    utxoSortGreatestToLeast ? b.value - a.value : a.value - b.value
-  )
-
   const concurrencyLimit = 100
   const processedUtxos: {
     utxo: EsploraUtxo
@@ -297,6 +292,12 @@ export const addressUtxos = async ({
       processedUtxos.push(result)
     }
   }
+
+
+  const utxoSortGreatestToLeast = spendStrategy?.utxoSortGreatestToLeast ?? true
+  processedUtxos.sort((a, b) =>
+    utxoSortGreatestToLeast ? b.utxo.value - a.utxo.value : a.utxo.value - b.utxo.value
+  )
 
   for (const { utxo, txOutput, scriptPk } of processedUtxos) {
     totalBalance += utxo.value

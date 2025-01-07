@@ -1,22 +1,19 @@
+import { Command } from 'commander'
 import fs from 'fs-extra'
 import { gzip as _gzip } from 'node:zlib'
 import { promisify } from 'util'
+import path from 'path'
 
-import { Command } from 'commander'
 import { Wallet } from './wallet'
 import * as alkanes from '../alkanes'
 import * as utxo from '../utxo'
-import { waitFiveSeconds } from './utils'
+import { timeout } from '../shared/utils'
 
 /* @dev example calls
-
-oyl alkane factoryDeploy -r "0x0ffe" -c free_mint.wasm
-
-oyl alkane factoryDeploy -r "0x0ffe" -m 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about' -p regtest -feeRate 2
-
+  oyl alkane factoryWasmDeploy -r "0x0ffe" -c free_mint.wasm
 */
 
-export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
+export const factoryWasmDeploy = new Command('factoryWasmDeploy')
   .requiredOption(
     '-r, --reserveNumber <reserveNumber>',
     'number to reserve for factory id'
@@ -36,6 +33,7 @@ export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
   .option('-feeRate, --feeRate <feeRate>', 'fee rate')
 
   .action(async (options) => {
+    console.log(`Deploying contract ${options.contract}`)
     const wallet = new Wallet({
       mnemonic: options.mnemonic,
       feeRate: options.feeRate,
@@ -43,7 +41,7 @@ export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
 
     const contract = new Uint8Array(
       Array.from(
-        await fs.readFile(options.contract)
+        await fs.readFile(path.join(__dirname, './', options.contract))
       )
     )
     const gzip = promisify(_gzip)
@@ -57,7 +55,7 @@ export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
     const { accountSpendableTotalUtxos, accountSpendableTotalBalance } =
       await utxo.accountUtxos({ account: wallet.account, provider: wallet. provider })
 
-    const commit = await alkanes.deployCommit({
+    const { txId: commitTxId, script } = await alkanes.deployCommit({
       payload,
       gatheredUtxos: {
         utxos: accountSpendableTotalUtxos,
@@ -69,6 +67,9 @@ export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
       provider: wallet.provider,
     })
 
+    console.log('Commit txid: ', commitTxId);
+
+
     const mempool = await wallet.provider.sandshrew.bitcoindRpc.getRawMemPool(true)
     const mempoolTxs = Object.keys(mempool)
     console.log('mempool transactions: ', mempoolTxs)
@@ -77,20 +78,18 @@ export const alkaneFactoryWasmDeploy = new Command('factoryWasmDeploy')
       wallet.account.nativeSegwit.address,
       mempoolTxs
     )
-    console.log('Processed block: ', blockHash)
-    console.log({ mempoolTxs, blockHash })
 
-    waitFiveSeconds()
+    await timeout(5000)
 
-    const reveal = await alkanes.deployReveal({
+    const { txId: revealTxId } = await alkanes.deployReveal({
       createReserveNumber: options.reserveNumber,
-      commitTxId: commit.txId,
-      script: commit.script,
+      commitTxId: commitTxId,
+      script: script,
       account: wallet.account,
       provider: wallet.provider,
       feeRate: wallet.feeRate,
       signer: wallet.signer,
     })
 
-    console.log({ commit: commit, reveal: reveal })
+    console.log('Reveal txid: ', revealTxId)
   })

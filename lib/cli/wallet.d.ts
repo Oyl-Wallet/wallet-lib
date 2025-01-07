@@ -1,8 +1,4 @@
 import { Provider, Account, Signer } from '..';
-export declare const defaultProvider: {
-    bitcoin: Provider;
-    regtest: Provider;
-};
 export type NetworkType = 'mainnet' | 'regtest';
 export interface WalletOptions {
     mnemonic?: string;

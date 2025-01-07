@@ -20,8 +20,8 @@ import { Provider } from '..'
 import { Signer } from '..'
 import { AssetType, MarketplaceOffers } from '..'
 import { OylTransactionError } from '../errors'
-import { alkaneFactoryWasmDeploy } from './alkane'
-import { init } from './regtest'
+import { factoryWasmDeploy } from './alkane'
+import { init, genBlocks } from './regtest'
 
 const defaultProvider = {
   bitcoin: new Provider({
@@ -1335,6 +1335,7 @@ const regtestCommand = new Command('regtest')
   .description('Regtest commands')
   .addCommand(fundAddress)
   .addCommand(genBlock)
+  .addCommand(genBlocks)
   .addCommand(init)
 
 const accountCommand = new Command('account')
@@ -1374,7 +1375,7 @@ const alkaneCommand = new Command('alkane')
   .addCommand(alkaneExecute)
   .addCommand(alkaneToken)
   .addCommand(alkanesTrace)
-  .addCommand(alkaneFactoryWasmDeploy)
+  .addCommand(factoryWasmDeploy)
 // .addCommand(alkaneMint)
 // .addCommand(alkaneTransfer)
 
