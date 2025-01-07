@@ -120,11 +120,18 @@ export class AlkanesRpc {
     return alkanesList
   }
 
+
+
   async trace(request: { vout: number; txid: string }) {
     request.txid = Buffer.from(
       Array.from(Buffer.from(request.txid, 'hex')).reverse()
     ).toString('hex')
     const ret = await this._call('alkanes_trace', [request])
+    return await ret
+  }
+
+  async runesByAddress(request: { address: string }) {
+    const ret = await this._call('alkanes_runesbyaddress', [request])
     return await ret
   }
 
@@ -185,3 +192,8 @@ export class AlkanesRpc {
     }
   }
 }
+
+new AlkanesRpc('http://mainnet.sandshrew.io/v1/d6aebfed1769128379aca7d215f0b689').runesByAddress({
+  address:
+    'bc1p8323esxy75z0x0a44ls9k89ge4ajsqrklcsmcf45nt6s43jrm23q9xh0t0',
+}).then((res) => console.log(res))
