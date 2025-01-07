@@ -61,6 +61,9 @@ export declare class AlkanesRpc {
         vout: number;
         txid: string;
     }): Promise<any>;
+    runesByAddress(request: {
+        address: string;
+    }): Promise<any>;
     simulate(request: AlkaneSimulateRequest): Promise<any>;
     getAlkanesByOutpoint({ txid, vout, protocolTag, }: {
         txid: string;
