@@ -646,7 +646,7 @@ export const createEtchReveal = async ({
   }
 }
 
-const getRuneOutpoints = async ({
+export const getRuneOutpoints = async ({
   address,
   provider,
   runeId,

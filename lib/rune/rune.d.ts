@@ -1,10 +1,18 @@
 /// <reference types="node" />
-/// <reference types="node" />
 import { Provider } from '../provider/provider';
 import * as bitcoin from 'bitcoinjs-lib';
 import { Account } from '../account/account';
 import { GatheredUtxos, RuneUTXO } from '../shared/interface';
 import { Signer } from '../signer';
+interface SingleRuneOutpoint {
+    output: string;
+    wallet_addr: string;
+    pkscript: string;
+    balances: number[];
+    decimals: number[];
+    rune_ids: string[];
+    satoshis?: number;
+}
 export declare const createSendPsbt: ({ gatheredUtxos, account, runeId, provider, inscriptionAddress, toAddress, amount, feeRate, fee, }: {
     gatheredUtxos: GatheredUtxos;
     account: Account;
@@ -61,6 +69,11 @@ export declare const createEtchReveal: ({ symbol, cap, premine, perMintAmount, t
     psbtHex: string;
     fee: number;
 }>;
+export declare const getRuneOutpoints: ({ address, provider, runeId, }: {
+    address: string;
+    provider: Provider;
+    runeId: string;
+}) => Promise<SingleRuneOutpoint[]>;
 export declare const findRuneUtxos: ({ address, greatestToLeast, provider, runeId, targetNumberOfRunes, }: {
     address: string;
     greatestToLeast: boolean;
@@ -198,3 +211,4 @@ export declare const etchReveal: ({ symbol, cap, premine, perMintAmount, turbo, 
     fee: number;
     satsPerVByte: string;
 }>;
+export {};

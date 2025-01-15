@@ -1,5 +1,4 @@
 /// <reference types="node" />
-/// <reference types="node" />
 import { Provider } from '../provider/provider';
 import * as bitcoin from 'bitcoinjs-lib';
 import { Account } from '../account/account';
