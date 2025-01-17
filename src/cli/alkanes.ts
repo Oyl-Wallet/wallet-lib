@@ -10,7 +10,7 @@ import { contractDeployment } from '../alkanes/contract'
 import { send, tokenDeployment } from '../alkanes/token'
 
 export const alkanesTrace = new Command('trace')
-  .description('Returns data based on txid and vout of deployed alkane')
+  .description('Returns data based on txid and vout of alkanes transaction')
   .requiredOption(
     '-p, --provider <provider>',
     'provider to use to access the network.'
@@ -20,7 +20,7 @@ export const alkanesTrace = new Command('trace')
     'parameters for the ord method you are calling.'
   )
   /* @dev example call
-    oyl alkanes trace -params '{"txid":"abc123...","vout":0}' -p regtest
+    oyl alkanes trace -params '{"txid":"abc123...","vout":3}' -p regtest
 
     please note the json format if you need to pass an object.
   */
@@ -54,7 +54,7 @@ export const alkaneContractDeploy = new Command('new-contract')
   )
 
   /* @dev example call 
-oyl alkane new-contract -c ./src/alkanes/free_mint.wasm -resNumber 777 -p regtest -feeRate 2
+oyl alkanes new-contract -c ./src/alkanes/free_mint.wasm -resNumber 777 -p regtest -feeRate 2
 */
 
   .action(async (options) => {
@@ -120,7 +120,7 @@ export const alkaneTokenDeploy = new Command('new-token')
   .option('-feeRate, --feeRate <feeRate>', 'fee rate')
 
   /* @dev example call 
-oyl alkane new-token -resNumber 10 -p regtest -feeRate 2 -amount 1000 -name "OYL" -symbol "OL" -cap 100000 -pre 5000
+oyl alkanes new-token -resNumber 777 -p regtest -feeRate 2 -amount 1000 -name "OYL" -symbol "OL" -cap 100000 -pre 5000
 */
 
   .action(async (options) => {
@@ -135,22 +135,24 @@ oyl alkane new-token -resNumber 10 -p regtest -feeRate 2 -amount 1000 -name "OYL
       BigInt(6),
       BigInt(options.reserveNumber),
       BigInt(0),
-      BigInt(options.premine ?? 0),
-      BigInt(options.amountPerMint),
-      BigInt(options.capacity),
+      BigInt(6000),
+      BigInt(2000),
+      BigInt(2000),
       BigInt(
         '0x' +
-          Buffer.from(options.tokenName.split('').reverse().join('')).toString(
+          Buffer.from("DDD").toString(
             'hex'
           )
       ),
       BigInt(
         '0x' +
           Buffer.from(
-            options.tokenSymbol.split('').reverse().join('')
+            "D"
           ).toString('hex')
       ),
     ]
+
+    console.log(calldata)
 
     if (options.image) {
       const image = new Uint8Array(
@@ -215,7 +217,9 @@ export const alkaneExecute = new Command('execute')
   )
   .option('-feeRate, --feeRate <feeRate>', 'fee rate')
   /* @dev example call 
-oyl alkane execute -p regtest -feeRate 2 -data '101'
+oyl alkanes execute -p regtest -feeRate 2 -data '101'
+Mint from initial token contract:
+oyl alkanes execute -p regtest -feeRate 2 -data '2,1,77'
 */
 
   .action(async (options) => {
@@ -256,7 +260,7 @@ export const alkaneSend = new Command('send')
   .option('-feeRate, --feeRate <feeRate>', 'fee rate')
 
   /* @dev example call 
-oyl alkane send -p regtest -feeRate 2 -tx '1' -blk '2' -amt 1000 -to bcrt1pkq6ayylfpe5hn05550ry25pkakuf72x9qkjc2sl06dfcet8sg25ql4dm73
+oyl alkanes send -p regtest -feeRate 2 -tx '1' -blk '2' -amt 1000 -to bcrt1pkq6ayylfpe5hn05550ry25pkakuf72x9qkjc2sl06dfcet8sg25ql4dm73
 */
 
   .action(async (options) => {

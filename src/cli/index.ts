@@ -7,7 +7,7 @@ import {
   alkaneSend,
   alkanesTrace,
   alkaneTokenDeploy,
-} from './alkane'
+} from './alkanes'
 import { init, genBlocks } from './regtest'
 import { runeSend, runeMint, runeEtchCommit, runeEtchReveal } from './rune'
 import { brc20Send } from './brc20'
@@ -54,6 +54,7 @@ const utxosCommand = new Command('utxo')
   .addCommand(accountUtxosToSpend)
   .addCommand(addressUtxosToSpend)
   .addCommand(accountAvailableBalance)
+  
 const btcCommand = new Command('btc')
   .description('Functions for sending bitcoin')
   .addCommand(btcSend)
@@ -62,9 +63,11 @@ const brc20Command = new Command('brc20')
   .description('Functions for brc20')
   .addCommand(brc20Send)
   .addCommand(addressBRC20Balance)
+
 const collectibleCommand = new Command('collectible')
   .description('Functions for collectibles')
   .addCommand(collectibleSend)
+
 const runeCommand = new Command('rune')
   .description('Functions for runes')
   .addCommand(runeSend)
@@ -72,7 +75,7 @@ const runeCommand = new Command('rune')
   .addCommand(runeEtchCommit)
   .addCommand(runeEtchReveal)
 
-const alkaneCommand = new Command('alkane')
+const alkaneCommand = new Command('alkanes')
   .description('Functions for alkanes')
   .addCommand(alkaneContractDeploy)
   .addCommand(alkaneExecute)
