@@ -791,6 +791,7 @@ export const createTransactReveal = async ({
         }),
       ],
     }).encodedRunestone
+    console.log(protostone.toString('hex'));
 
     const p2pk_redeem = { output: script }
 
