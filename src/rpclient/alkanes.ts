@@ -191,7 +191,7 @@ export class AlkanesRpc {
    }): Promise<any> {
      const alkaneList = await this._call('alkanes_protorunesbyoutpoint', [
        {
-         txid,
+         txid: Buffer.from(txid, 'hex').reverse().toString('hex'),
          vout,
          protocolTag,
        },
