@@ -31,16 +31,16 @@ export declare const send: ({ utxos, toAddress, amount, feeRate, account, provid
     fee: number;
     satsPerVByte: string;
 }>;
-export declare const actualFee: ({ utxos, toAddress, amount, feeRate, account, provider, signer, }: {
+export declare const actualFee: ({ utxos, toAddress, amount, feeRate, account, provider, }: {
     utxos: FormattedUtxo[];
     toAddress: string;
     feeRate: number;
     amount: number;
     account: Account;
     provider: Provider;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
 export declare const minimumFee: ({ taprootInputCount, nonTaprootInputCount, outputCount, }: {
     taprootInputCount: number;

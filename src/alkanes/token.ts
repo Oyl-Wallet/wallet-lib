@@ -12,9 +12,11 @@ import {
   inscriptionSats,
   formatInputsToSign,
   getAddressType,
+  getEstimatedFee,
 } from '../shared/utils'
 import { deployCommit, executeReveal, findAlkaneUtxos } from './alkanes'
 
+// Deploy token with as a commit/reveal with image payload
 export const tokenDeployment = async ({
   payload,
   gatheredUtxos,
@@ -55,6 +57,9 @@ export const tokenDeployment = async ({
 
   return { ...reveal, commitTx: txId }
 }
+
+
+
 export const createSendPsbt = async ({
   gatheredUtxos,
   account,
@@ -271,6 +276,99 @@ export const createSendPsbt = async ({
   }
 }
 
+export const actualSendFee = async ({
+  gatheredUtxos,
+  account,
+  alkaneId,
+  provider,
+  toAddress,
+  amount,
+  feeRate,
+  // signer,
+}: {
+  gatheredUtxos: GatheredUtxos
+  account: Account
+  alkaneId: { block: string; tx: string }
+  provider: Provider
+  toAddress: string
+  amount: number
+  feeRate?: number
+  // signer: Signer
+}) => {
+  if (!feeRate) {
+    feeRate = (await provider.esplora.getFeeEstimates())['1']
+  }
+
+  const { psbt } = await createSendPsbt({
+    gatheredUtxos,
+    account,
+    alkaneId,
+    provider,
+    toAddress,
+    amount,
+    feeRate,
+  })
+
+  const { fee: estimatedFee } = await getEstimatedFee({
+    feeRate,
+    psbt,
+    provider,
+  })
+
+  // const { signedPsbt } = await signer.signAllInputs({
+  //   rawPsbt: psbt,
+  //   finalize: true,
+  // })
+
+  // let rawPsbt = bitcoin.Psbt.fromBase64(signedPsbt, {
+  //   network: account.network,
+  // })
+
+  // const signedHexPsbt = rawPsbt.extractTransaction().toHex()
+
+  // const vsize = (
+  //   await provider.sandshrew.bitcoindRpc.testMemPoolAccept([signedHexPsbt])
+  // )[0].vsize
+
+  // const correctFee = vsize * feeRate
+
+  const { psbt: finalPsbt } = await createSendPsbt({
+    gatheredUtxos,
+    account,
+    alkaneId,
+    provider,
+    toAddress,
+    amount,
+    feeRate,
+    fee: estimatedFee,
+  })
+
+  const { fee: finalFee, vsize } = await getEstimatedFee({
+    feeRate,
+    psbt: finalPsbt,
+    provider,
+  })
+
+  // const { signedPsbt: signedAll } = await signer.signAllInputs({
+  //   rawPsbt: finalPsbt,
+  //   finalize: true,
+  // })
+
+  // let finalRawPsbt = bitcoin.Psbt.fromBase64(signedAll, {
+  //   network: account.network,
+  // })
+
+  // const finalSignedHexPsbt = finalRawPsbt.extractTransaction().toHex()
+
+  // const finalVsize = (
+  //   await provider.sandshrew.bitcoindRpc.testMemPoolAccept([finalSignedHexPsbt])
+  // )[0].vsize
+
+  // const finalFee = finalVsize * feeRate
+
+  return { fee: finalFee, vsize }
+}
+
 export const send = async ({
   gatheredUtxos,
   toAddress,
@@ -298,7 +396,7 @@ export const send = async ({
     provider,
     toAddress,
     feeRate,
-    signer,
+    // signer,
   })
 
   const { psbt: finalPsbt } = await createSendPsbt({
@@ -322,85 +420,4 @@ export const send = async ({
   })
 
   return result
-}
-
-export const actualSendFee = async ({
-  gatheredUtxos,
-  account,
-  alkaneId,
-  provider,
-  toAddress,
-  amount,
-  feeRate,
-  signer,
-}: {
-  gatheredUtxos: GatheredUtxos
-  account: Account
-  alkaneId: { block: string; tx: string }
-  provider: Provider
-  toAddress: string
-  amount: number
-  feeRate?: number
-  signer: Signer
-}) => {
-  if (!feeRate) {
-    feeRate = (await provider.esplora.getFeeEstimates())['1']
-  }
-
-  const { psbt } = await createSendPsbt({
-    gatheredUtxos,
-    account,
-    alkaneId,
-    provider,
-    toAddress,
-    amount,
-    feeRate,
-  })
-
-  const { signedPsbt } = await signer.signAllInputs({
-    rawPsbt: psbt,
-    finalize: true,
-  })
-
-  let rawPsbt = bitcoin.Psbt.fromBase64(signedPsbt, {
-    network: account.network,
-  })
-
-  const signedHexPsbt = rawPsbt.extractTransaction().toHex()
-
-  const vsize = (
-    await provider.sandshrew.bitcoindRpc.testMemPoolAccept([signedHexPsbt])
-  )[0].vsize
-
-  const correctFee = vsize * feeRate
-
-  const { psbt: finalPsbt } = await createSendPsbt({
-    gatheredUtxos,
-    account,
-    alkaneId,
-    provider,
-    toAddress,
-    amount,
-    feeRate,
-    fee: correctFee,
-  })
-
-  const { signedPsbt: signedAll } = await signer.signAllInputs({
-    rawPsbt: finalPsbt,
-    finalize: true,
-  })
-
-  let finalRawPsbt = bitcoin.Psbt.fromBase64(signedAll, {
-    network: account.network,
-  })
-
-  const finalSignedHexPsbt = finalRawPsbt.extractTransaction().toHex()
-
-  const finalVsize = (
-    await provider.sandshrew.bitcoindRpc.testMemPoolAccept([finalSignedHexPsbt])
-  )[0].vsize
-
-  const finalFee = finalVsize * feeRate
-
-  return { fee: finalFee }
 }

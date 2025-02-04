@@ -32,6 +32,21 @@ export declare const createSendPsbt: ({ gatheredUtxos, account, alkaneId, provid
 }) => Promise<{
     psbt: string;
 }>;
+export declare const actualSendFee: ({ gatheredUtxos, account, alkaneId, provider, toAddress, amount, feeRate, }: {
+    gatheredUtxos: GatheredUtxos;
+    account: Account;
+    alkaneId: {
+        block: string;
+        tx: string;
+    };
+    provider: Provider;
+    toAddress: string;
+    amount: number;
+    feeRate?: number;
+}) => Promise<{
+    fee: number;
+    vsize: number;
+}>;
 export declare const send: ({ gatheredUtxos, toAddress, amount, alkaneId, feeRate, account, provider, signer, }: {
     gatheredUtxos: GatheredUtxos;
     toAddress: string;
@@ -48,19 +63,4 @@ export declare const send: ({ gatheredUtxos, toAddress, amount, alkaneId, feeRat
     weight: any;
     fee: number;
     satsPerVByte: string;
-}>;
-export declare const actualSendFee: ({ gatheredUtxos, account, alkaneId, provider, toAddress, amount, feeRate, signer, }: {
-    gatheredUtxos: GatheredUtxos;
-    account: Account;
-    alkaneId: {
-        block: string;
-        tx: string;
-    };
-    provider: Provider;
-    toAddress: string;
-    amount: number;
-    feeRate?: number;
-    signer: Signer;
-}) => Promise<{
-    fee: number;
 }>;

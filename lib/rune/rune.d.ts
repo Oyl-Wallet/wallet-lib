@@ -1,7 +1,6 @@
 /// <reference types="node" />
 /// <reference types="node" />
 import { Provider } from '../provider/provider';
-import * as bitcoin from 'bitcoinjs-lib';
 import { Account } from '../account/account';
 import { GatheredUtxos, RuneUTXO } from '../shared/interface';
 import { Signer } from '../signer';
@@ -37,10 +36,9 @@ export declare const createMintPsbt: ({ gatheredUtxos, account, runeId, provider
 }) => Promise<{
     psbt: string;
 }>;
-export declare const createEtchCommit: ({ gatheredUtxos, taprootKeyPair, tweakedTaprootKeyPair, runeName, account, provider, feeRate, fee, }: {
+export declare const createEtchCommit: ({ gatheredUtxos, tweakedPublicKey, runeName, account, provider, feeRate, fee, }: {
     gatheredUtxos: GatheredUtxos;
-    taprootKeyPair: bitcoin.Signer;
-    tweakedTaprootKeyPair: bitcoin.Signer;
+    tweakedPublicKey: string;
     runeName: string;
     account: Account;
     provider: Provider;
@@ -50,7 +48,7 @@ export declare const createEtchCommit: ({ gatheredUtxos, taprootKeyPair, tweaked
     psbt: string;
     script: Buffer;
 }>;
-export declare const createEtchReveal: ({ symbol, cap, premine, perMintAmount, turbo, divisibility, runeName, receiverAddress, script, feeRate, tweakedTaprootKeyPair, provider, fee, commitTxId, }: {
+export declare const createEtchReveal: ({ symbol, cap, premine, perMintAmount, turbo, divisibility, runeName, receiverAddress, script, feeRate, tweakedPublicKey, provider, fee, commitTxId, account, }: {
     symbol: string;
     cap: bigint;
     premine: bigint;
@@ -61,14 +59,13 @@ export declare const createEtchReveal: ({ symbol, cap, premine, perMintAmount, t
     receiverAddress: string;
     script: Buffer;
     feeRate: number;
-    tweakedTaprootKeyPair: bitcoin.Signer;
+    tweakedPublicKey: string;
     provider: Provider;
     fee?: number;
     commitTxId: string;
+    account: Account;
 }) => Promise<{
     psbt: string;
-    psbtHex: string;
-    fee: number;
 }>;
 export declare const getRuneOutpoints: ({ address, provider, runeId, }: {
     address: string;
@@ -86,7 +83,7 @@ export declare const findRuneUtxos: ({ address, greatestToLeast, provider, runeI
     runeTotalSatoshis: number;
     divisibility: number;
 }>;
-export declare const actualSendFee: ({ gatheredUtxos, account, runeId, provider, inscriptionAddress, toAddress, amount, feeRate, signer, }: {
+export declare const actualSendFee: ({ gatheredUtxos, account, runeId, provider, inscriptionAddress, toAddress, amount, feeRate, }: {
     gatheredUtxos: GatheredUtxos;
     account: Account;
     runeId: string;
@@ -95,35 +92,33 @@ export declare const actualSendFee: ({ gatheredUtxos, account, runeId, provider,
     toAddress: string;
     amount: number;
     feeRate?: number;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
-export declare const actualMintFee: ({ gatheredUtxos, account, runeId, provider, feeRate, signer, }: {
+export declare const actualMintFee: ({ gatheredUtxos, account, runeId, provider, feeRate, }: {
     gatheredUtxos: GatheredUtxos;
     account: Account;
     runeId: string;
     provider: Provider;
     feeRate?: number;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
-export declare const actualEtchCommitFee: ({ tweakedTaprootKeyPair, taprootKeyPair, gatheredUtxos, account, runeName, provider, feeRate, signer, }: {
-    tweakedTaprootKeyPair: bitcoin.Signer;
-    taprootKeyPair: bitcoin.Signer;
+export declare const actualEtchCommitFee: ({ tweakedPublicKey, gatheredUtxos, account, runeName, provider, feeRate, }: {
+    tweakedPublicKey: string;
     gatheredUtxos: GatheredUtxos;
     account: Account;
     runeName: string;
     provider: Provider;
     feeRate?: number;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
-export declare const actualEtchRevealFee: ({ tweakedTaprootKeyPair, taprootKeyPair, symbol, cap, premine, perMintAmount, turbo, divisibility, runeName, commitTxId, receiverAddress, script, account, provider, feeRate, signer, }: {
-    tweakedTaprootKeyPair: bitcoin.Signer;
-    taprootKeyPair: bitcoin.Signer;
+export declare const actualEtchRevealFee: ({ tweakedPublicKey, symbol, cap, premine, perMintAmount, turbo, divisibility, runeName, commitTxId, receiverAddress, script, account, provider, feeRate, }: {
+    tweakedPublicKey: string;
     symbol: string;
     cap: bigint;
     premine: bigint;
@@ -137,9 +132,9 @@ export declare const actualEtchRevealFee: ({ tweakedTaprootKeyPair, taprootKeyPa
     account: Account;
     provider: Provider;
     feeRate?: number;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
 export declare const send: ({ gatheredUtxos, toAddress, amount, runeId, inscriptionAddress, feeRate, account, provider, signer, }: {
     gatheredUtxos: GatheredUtxos;

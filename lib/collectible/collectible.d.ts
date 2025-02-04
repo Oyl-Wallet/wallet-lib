@@ -41,7 +41,7 @@ export declare const send: ({ gatheredUtxos, toAddress, inscriptionId, inscripti
     fee: number;
     satsPerVByte: string;
 }>;
-export declare const actualFee: ({ gatheredUtxos, account, inscriptionId, provider, inscriptionAddress, toAddress, feeRate, signer, }: {
+export declare const actualFee: ({ gatheredUtxos, account, inscriptionId, provider, inscriptionAddress, toAddress, feeRate, }: {
     gatheredUtxos: GatheredUtxos;
     account: Account;
     inscriptionId: string;
@@ -49,7 +49,7 @@ export declare const actualFee: ({ gatheredUtxos, account, inscriptionId, provid
     inscriptionAddress?: string;
     toAddress: string;
     feeRate?: number;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;

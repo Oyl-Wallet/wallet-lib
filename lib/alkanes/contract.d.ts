@@ -1,7 +1,6 @@
 /// <reference types="node" />
 /// <reference types="node" />
 import { Account, Signer, Provider } from '..';
-import * as bitcoin from 'bitcoinjs-lib';
 import { AlkanesPayload, GatheredUtxos } from '../shared/interface';
 export declare const contractDeployment: ({ payload, gatheredUtxos, account, reserveNumber, provider, feeRate, signer, }: {
     payload: AlkanesPayload;
@@ -20,28 +19,28 @@ export declare const contractDeployment: ({ payload, gatheredUtxos, account, res
     fee: number;
     satsPerVByte: string;
 }>;
-export declare const actualDeployCommitFee: ({ payload, tweakedTaprootKeyPair, gatheredUtxos, account, provider, feeRate, signer, }: {
+export declare const actualDeployCommitFee: ({ payload, tweakedPublicKey, gatheredUtxos, account, provider, feeRate, }: {
     payload: AlkanesPayload;
-    tweakedTaprootKeyPair: bitcoin.Signer;
+    tweakedPublicKey: string;
     gatheredUtxos: GatheredUtxos;
     account: Account;
     provider: Provider;
     feeRate?: number;
-    signer: Signer;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
-export declare const actualDeployRevealFee: ({ createReserveNumber, tweakedTaprootKeyPair, commitTxId, receiverAddress, script, provider, feeRate, }: {
+export declare const actualDeployRevealFee: ({ createReserveNumber, tweakedPublicKey, commitTxId, receiverAddress, script, provider, feeRate, }: {
     createReserveNumber: string;
-    tweakedTaprootKeyPair: bitcoin.Signer;
+    tweakedPublicKey: string;
     commitTxId: string;
     receiverAddress: string;
     script: Buffer;
     provider: Provider;
-    signer: Signer;
     feeRate?: number;
 }) => Promise<{
     fee: number;
+    vsize: number;
 }>;
 export declare const deployReveal: ({ createReserveNumber, commitTxId, script, account, provider, feeRate, signer, }: {
     createReserveNumber: string;
